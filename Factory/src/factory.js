@@ -2,7 +2,17 @@
 
     var exports = (typeof module === 'undefined') ? ((typeof window === 'undefined') ? {} : window) : module.exports;
 
-    var Exceptions = {
+    if (!String.prototype.trim) {
+        String.prototype.trim = function () {
+            return this.replace(/^\s+|\s+$/g,'');
+        };
+    }
+
+    var Factory = {};
+
+    /* Exceptions */
+
+    var Exceptions = Factory.Exceptions = {
         InvalidArgumentType: function(expected, actual) {
             return new Error('Expected: ' + expected.toString() + ', but got: ' + actual.toString() + '.');
         },
@@ -17,11 +27,7 @@
         }
     };
 
-    if (!String.prototype.trim) {
-        String.prototype.trim = function () {
-            return this.replace(/^\s+|\s+$/g,'');
-        };
-    }
+    /* Namespaces */
 
     var NamespaceManager = (function() {
         var namespaces = {};
@@ -61,22 +67,27 @@
         };
     })();
 
-    var Factory = {};
+    Factory.namespace = function namespace(path) {
+        return NamespaceManager.get(path);
+    };
 
-    Factory.Exceptions = Exceptions;
+    /* Class Functions */
 
-    var parseFunctionName = function parseFunctionName(type) {
+    function parseFunctionName(type) {
         if (typeof type.name !== 'undefined' && type.name !== '' && type.name !== null) {
             return type.name;
         }
 
         var name = /\W*function\s+([\w\$]+)\(/.exec(type);
+
         if (name) {
             return name[1];
         }
-    };
 
-    var Class = function Class(baseType, type) {
+        return undefined;
+    }
+
+    function defineClass(baseType, type) {
         var typeName = parseFunctionName(type);
         var baseTypeName = parseFunctionName(baseType);
 
@@ -133,7 +144,7 @@
                     throw Exceptions.MissingConstructorName();
                 }
 
-                var proxy = Class(ProxyClass, constructor);
+                var proxy = defineClass(ProxyClass, constructor);
                 proxy.$type.namespace = namespace || proxy.$type.namespace;
 
                 return proxy;
@@ -156,9 +167,13 @@
         };
 
         return ProxyClass;
-    };
+    }
 
-    var BaseObject = Factory.BaseObject = Class(Object, function BaseObject() {
+    Factory.DefineClass = defineClass;
+
+    /* Classes */
+
+    var BaseObject = Factory.BaseObject = Factory.DefineClass(Object, function BaseObject() {
         return {
             dispose: function dispose() {}
         };
