@@ -1,5 +1,7 @@
 (function(exports) {
 
+    /* Exceptions */
+
     var Exceptions = {
         IndexOutOfBounds: function IndexOutOfBounds(index) {
             return new Error('Index was out of bounds: ' + index);
@@ -9,12 +11,47 @@
         }
     };
 
+    /* Helper functions */
+
     var ArgumentsToArray = function ArgumentsToArray(array) {
         return Array.prototype.slice.call(array, 0);
     };
 
     var At = function At(array, index) {
         return array.charAt ? array.charAt(index) : array[index];
+    };
+
+    var Copy = function Copy(source, target, callback) {
+        if (IsOnlyMatchingType(source, Object)) {
+            var resultTarget = target || {};
+
+            IterateObject(source, function(value, key) {
+                resultTarget[key] = value;
+
+                if (callback) {
+                    var result = callback.apply(this, [source, resultTarget, key, value]);
+
+                    if (result) {
+                        return result;
+                    }
+                }
+            });
+
+            return resultTarget;
+        }
+
+        return source;
+    };
+
+    var Clone = function Clone(source, target) {
+        var callback = function(source, target, key, value) {
+            var s = source[key], t = target[key];
+            if (IsOnlyMatchingType(s, Object)) {
+                t[key] = Copy.apply(this, [s, t]);
+            }
+        };
+
+        return Copy.apply(this, [source, target, callback]);
     };
 
     var IsMatchingType = function IsMatchingType(source, target) {
@@ -36,6 +73,28 @@
             return is('string');
         } else if (type === Object) {
             return is('object');
+        }
+
+        return false;
+    };
+
+    var IsOnlyMatchingType = function IsOnlyMatchingType(source, target) {
+        if (IsMatchingType(source, type)) {
+            if (IsMatchingType(target, Array)) {
+                return true;
+            } else if (IsMatchingType(target, Date)) {
+                return true;
+            } else if (IsMatchingType(target, Boolean)) {
+                return true;
+            } else if (IsMatchingType(target, Number)) {
+                return true;
+            } else if (IsMatchingType(target, String)) {
+                return true;
+            } else if (IsMatchingType(target, Function)) {
+                return true;
+            } else if (IsMatchingType(target, Object)) {
+                return true;
+            }
         }
 
         return false;
@@ -84,22 +143,46 @@
     var Iterate = function Iterate(object, callback) {
         if (IsMatchingType(callback, Function)) {
             if (IsMatchingType(object, Array) || IsMatchingType(object, String)) {
-                return IterateArray(object, callback);
+                return IterateArray.apply(this, [object, callback]);
             } else if (IsMatchingType(object, Number)) {
-                return IterateCount(object, callback);
+                return IterateCount.apply(this, [object, callback]);
             }
 
-            return IterateObject(object, callback);
+            return IterateObject.apply(this, [object, callback]);
         }
 
         throw Exceptions.InvalidOperation('Could not iterate the object you provided.');
     };
 
+    var RemoveFromArray = function RemoveFromArray(array, startIndex, count) {
+        // http://ejohn.org/blog/javascript-array-remove/
+        var rest = array.slice((count || startIndex) + 1 || array.length);
+        array.length = startIndex < 0 ? array.length + startIndex : startIndex;
+        return array.push.apply(array, rest);
+    };
+
+    /* Enums */
+
+    var BindingTypes = {
+        ByReference: 0,
+        ByValue: 1
+    };
+
+    /* That */
+
     var That = function That(object) {
+        var T = this;
+
+        /// <summary>
+        /// Returns an arguments object into an array.
+        /// </summary>
         var args = this.args = function args() {
             return ArgumentsToArray(object);
         };
 
+        /// <summary>
+        /// Safely gets the value at the specified index for an array or string.
+        /// </summary>
         var at = this.at = function at(index) {
             if (not.bounded(index)) {
                 throw Exceptions.IndexOutOfBounds(index);
@@ -119,11 +202,42 @@
             return (index >= 0 && index < object.length);
         };
 
+        var clone = this.clone = function clone() {
+            return Clone.apply(this, [object]);
+        };
+
+        clone.to = function to(target) {
+            return Clone.apply(this, [object, target]);
+        };
+
+        var copy = this.copy = function copy() {
+            return Copy.apply(this, [object]);
+        };
+
+        copy.to = function to(target) {
+            return Copy.apply(this, [object, target]);
+        };
+
+        /// <summary>
+        /// Deletes the specified index in the array or string or removes
+        /// the property from an object.
+        /// </summary>
         var del = this.del = function del(value) {
-            if (IsMatchingType(object, Array) || IsMatchingType(object, String)) {
-
-            } else if (IsMatchingType(object, Object)) {
-
+            if (IsMatchingType(value, String)) {
+                if (IsMatchingType(object, Object)) {
+                    try {
+                        delete object[value];
+                    } catch(e) {
+                        object[value] = undefined;
+                    }
+                }
+            } else if (IsMatchingType(value, Number)) {
+                if (IsMatchingType(object, Array)) {
+                    return RemoveFromArray(object, value);
+                } else if (IsMatchingType(object, String)) {
+                    var array = object.slice(0);
+                    return RemoveFromArray(array, value).join('');
+                }
             }
         };
 
@@ -162,6 +276,41 @@
             return (typeof object === 'undefined' || object === null || object === '');
         };
 
+        var events = this.events = function events(eventList) {
+            var eventNames = IsMatchingType(eventList, Array) ? eventList : ArgumentsToArray(arguments);
+
+            if (!object.events) {
+                object.events = {};
+            }
+
+            IterateArray(eventNames, function(eventName) {
+                var handlers = [];
+
+                var event = object.events[eventName] = function listener(handler) {
+                    handlers.push(handler);
+
+                    return this;
+                };
+
+                event.any = function any() {
+                    return (handlers.length > 0);
+                };
+
+                event.none = function none() {
+                    return (handlers.length === 0);
+                };
+
+                event.notify = function notify() {
+                    var args = arguments;
+                    IterateArray(handlers, function(handler) {
+                        handler.apply(object, args);
+                    });
+
+                    return this;
+                };
+            });
+        };
+
         /// <summary>
         /// Determines if the array, string, or object contains the provided
         /// value.
@@ -178,7 +327,7 @@
         /// Checks if the object's type matches the requested type.
         /// </summary>
         var is = this.is = function is(type) {
-            IsMatchingType(object, type);
+            return IsMatchingType(object, type);
         };
 
         /// <summary>
@@ -204,25 +353,7 @@
         };
 
         is.only = function only(type) {
-            if (IsMatchingType(object, type)) {
-                if (IsMatchingType(type, Array)) {
-                    return true;
-                } else if (IsMatchingType(type, Date)) {
-                    return true;
-                } else if (IsMatchingType(type, Boolean)) {
-                    return true;
-                } else if (IsMatchingType(type, Number)) {
-                    return true;
-                } else if (IsMatchingType(type, String)) {
-                    return true;
-                } else if (IsMatchingType(type, Function)) {
-                    return true;
-                } else if (IsMatchingType(type, Object)) {
-                    return true;
-                }
-            }
-
-            return false;
+            return IsOnlyMatchingType(object, type);
         };
 
         /// <summary>
@@ -235,36 +366,58 @@
             empty: function empty() { return !empty(); },
             has: function has(value) { return !has(value); }
         };
+
+        var properties = function properties(source, options) {
+            var target = object;
+
+            IterateObject(source, function(value, key) {
+                if (IsOnlyMatchingType(target[key], Object)) {
+                    var capturedValue = value;
+
+                    if (options.bindingType === BindingTypes.ByValue) {
+                        capturedValue = Copy(value);
+                    }
+
+                    target[key] = function accessor(value) {
+                        if (IsMatchingType(value, undefined)) {
+                            return capturedValue;
+                        }
+
+                        capturedValue = value;
+                    };
+                }
+            });
+        };
     };
 
     That.Exceptions = Exceptions;
 
     /* Module management */
 
-    var context = {
+    var Modules = {
         includes: 0,
         including: 0,
         scripts: {}
     };
 
     var handleInclude = function handleInclude(filename) {
-        context.includes++;
+        Modules.includes++;
     };
 
     That.include = function include(files) {
         var fileNames = typeof files === 'array' ? files : Array.prototype.slice.call(arguments, 0);
 
-        context.including = fileNames.length;
+        Modules.including = fileNames.length;
 
-        for (var i=0; i < context.including; i++) {
+        for (var i=0; i < Modules.including; i++) {
             var filename = fileNames[i];
-            this.initializer(filename, handleInclude);
+            That.include.initializer(filename, handleInclude);
         }
     };
 
     That.include.initializer = function initializer(filename, callback) {
         if (typeof require === 'function') {
-            var node = context.scripts[filename] = require(filename);
+            var node = Modules.scripts[filename] = require(filename);
             callback(filename, node);
         }
     };
@@ -274,6 +427,5 @@
     exports.that = function that(object) {
         return new That(object);
     };
-
 
 })(typeof module !== 'undefined' && typeof module.exports !== 'undefined' ? module.exports : window);
