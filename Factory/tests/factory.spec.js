@@ -152,9 +152,10 @@
 
             it('should get a namespace object', function() {
                 var namespaceObject = CustomNamespaceClass.$type.namespaceObject();
+                var TestingNamespaceParts = TestingNamespace.split('.');
                 expect(namespaceObject.isNamespace).toBe(true);
-                expect(namespaceObject.name).toBe('Factory');
-                expect(namespaceObject.parent.name).toBe('Testing');
+                expect(namespaceObject.name).toBe(TestingNamespaceParts[1]);
+                expect(namespaceObject.parent.name).toBe(TestingNamespaceParts[0]);
             });
 
         });
