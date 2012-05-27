@@ -1,3 +1,6 @@
+The Jasmine tests are going to better reflect the current state of the framework,
+so use this as a guide only.
+
 ``` javascript
 
 var Person = Factory.BaseObject.extend(function Person(birthGender) {

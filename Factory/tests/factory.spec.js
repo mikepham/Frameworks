@@ -88,6 +88,46 @@
             expect(child.protectedVariableValue()).toBe('protected');
         });
 
+        it('should allow separate protected contexts for each descendant', function() {
+            var CommonClass = Factory.BaseObject.extend(function CommonClass() {
+                this.$init();
+                var context = this.$context;
+                return {
+                    init: function init() {
+                        context._type = 'CommonClass';
+                    }
+                };
+            });
+
+            var First = CommonClass.extend(function First() {
+                this.$init();
+                var context = this.$context;
+                return {
+                    init: function init() {
+                        context._type = 'First';
+                    },
+                    typeName: function typeName() {
+                        return this.$context._type;
+                    }
+                };
+            });
+
+            var Second = CommonClass.extend(function Second() {
+                this.$init();
+                return {
+                    typeName: function typeName() {
+                        return this.$context._type + '.Second';
+                    }
+                };
+            });
+
+            var first = new First(), second = new Second();
+            expect(first._type).toBeUndefined();
+            expect(second._type).toBeUndefined();
+            expect(first.typeName()).toBe('First');
+            expect(second.typeName()).toBe('CommonClass.Second');
+        });
+
         describe('Namespacing', function() {
 
             var TestingNamespace = 'Testing.Factory';

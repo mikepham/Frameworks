@@ -34,6 +34,9 @@
         },
         MissingConstructorName: function() {
             return new Error('Cannot use anonymous functions. You must provide a named function.');
+        },
+        NoBaseMethodToCall: function() {
+            return new Error('No additional base methods to call. Do not call $base in this case.');
         }
     };
 
@@ -134,6 +137,7 @@
             ///     lets us have a nice "protected" variable space. We also store the
             ///     forwarder for init methods.
             var context = {
+                $context: {},
                 $self: self,
                 $init: function $init() {
                     if (typeof self.init === 'function') {
@@ -163,13 +167,14 @@
                     ///     call or completely ignore when overriding.
                     (function(memberFunction, baseFunction) {
                         context.$self[memberName] = function() {
-                            var method = this;
+                            var $method = this;
+                            $method.$context = context.$context;
 
-                            if (typeof baseFunction === 'function') {
-                                method.$base = baseFunction;
-                            }
+                            $method.base = (typeof baseFunction === 'function') ? baseFunction : function() {
+                                throw Exceptions.NoBaseMethodToCall();
+                            };
 
-                            return memberFunction.apply(method, arguments);
+                            return memberFunction.apply($method, arguments);
                         };
                     })(member, baseMember);
                 }
@@ -179,7 +184,7 @@
             ///     parameters. This is how constructor parameters are passed from
             ///     descendant to parent.
             if (typeof context.$self.init === 'function') {
-                context.$self.init.apply(self, arguments);
+                context.$self.init.apply(context, arguments);
             }
 
             return context.$self;
