@@ -128,6 +128,116 @@
             expect(second.typeName()).toBe('CommonClass.Second');
         });
 
+        it('should be able to define properties with types', function() {
+            var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
+                var context = this;
+                context.$properties.define('firstName', String, 'Mike');
+                context.$properties.define('orders', Array, []);
+
+                return {};
+            });
+
+            var propertyClass = new PropertyClass();
+
+            expect(propertyClass.firstName instanceof Function).toBe(true);
+            expect(propertyClass.orders instanceof Function).toBe(true);
+            expect(typeof propertyClass.firstName() === 'string').toBe(true);
+            expect(propertyClass.orders() instanceof Array).toBe(true);
+        });
+
+        it('should have null as the default value when no initial value provided', function() {
+            var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
+                var context = this;
+                context.$properties.define('firstName', String);
+
+                return {};
+            });
+
+            var propertyClass = new PropertyClass();
+
+            expect(propertyClass.firstName()).toBe(null);
+        });
+
+        it('should be able to set property value', function() {
+            var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
+                var context = this;
+                context.$properties.define('firstName', String);
+
+                return {};
+            });
+
+            var propertyClass = new PropertyClass();
+            propertyClass.firstName('Michael');
+
+            expect(propertyClass.firstName()).toBe('Michael');
+        });
+
+        it('should reject values that are not of the defined type', function() {
+            var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
+                var context = this;
+                context.$properties.define('firstName', String);
+
+                return {};
+            });
+
+            var propertyClass = new PropertyClass();
+
+            function expectation() {
+                propertyClass.firstName({});
+            }
+
+            expect(expectation).toThrow(Factory.Exceptions.InvalidArgumentType(String, {}));
+        });
+
+        it('should be able to define events', function() {
+            var EventClass = Factory.BaseObject.extend(function EventClass() {
+                this.$events.define('simpleEvent');
+                return {};
+            });
+
+            var eventClass = new EventClass();
+
+            expect(eventClass.events.simpleEvent).toBeDefined();
+            expect(eventClass.events.simpleEvent instanceof Function).toBe(true);
+        });
+
+        it('should be able to add event handlers and call them', function() {
+            var EventClass = Factory.BaseObject.extend(function EventClass() {
+                this.$events.define('simpleEvent');
+                return {};
+            });
+
+            var called = false;
+
+            var eventClass = new EventClass();
+            eventClass.events.simpleEvent(function() {
+                called = true;
+            });
+            eventClass.events.simpleEvent.notify();
+
+            expect(called).toBe(true);
+        });
+
+        it('should be able to add multiple event handlers and call them', function() {
+            var EventClass = Factory.BaseObject.extend(function EventClass() {
+                this.$events.define('simpleEvent');
+                return {};
+            });
+
+            var called = 0;
+
+            var eventClass = new EventClass();
+            eventClass.events.simpleEvent(function() {
+                called++;
+            });
+            eventClass.events.simpleEvent(function() {
+                called++;
+            });
+            eventClass.events.simpleEvent.notify();
+
+            expect(called).toBe(2);
+        });
+
         describe('Namespacing', function() {
 
             var TestingNamespace = 'Testing.Factory';

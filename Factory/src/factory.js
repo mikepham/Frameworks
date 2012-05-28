@@ -26,17 +26,20 @@
     /// messages will some day get localization.
     /// <summary>
     var Exceptions = Factory.Exceptions = {
-        InvalidArgumentType: function(expected, actual) {
+        InvalidArgumentType: function InvalidArgumentType(expected, actual) {
             return new Error('Expected: ' + expected.toString() + ', but got: ' + actual.toString() + '.');
         },
-        MissingConstructor: function() {
+        MissingConstructor: function MissingConstructor() {
             return new Error('You must provide a named constructor function.');
         },
-        MissingConstructorName: function() {
+        MissingConstructorName: function MissingConstructorName() {
             return new Error('Cannot use anonymous functions. You must provide a named function.');
         },
-        NoBaseMethodToCall: function() {
+        NoBaseMethodToCall: function NoBaseMethodToCall() {
             return new Error('No additional base methods to call. Do not call $base in this case.');
+        },
+        PropertyExists: function PropertyExists(propertyName) {
+            return new Error('Property already exists: ' + propertyName + '.');
         }
     };
 
@@ -132,18 +135,94 @@
         ///     you will call "new" against.
         var ProxyClass = function ProxyClass() {
             var self = this;
+            var handlers = [];
 
             /// [a] This context object is what makes the world go 'round and it also
             ///     lets us have a nice "protected" variable space. We also store the
             ///     forwarder for init methods.
             var context = {
                 $context: {},
-                $self: self,
                 $init: function $init() {
                     if (typeof self.init === 'function') {
                         return self.init.apply(self, arguments);
                     }
-                }
+                },
+                $events: {
+                    define: function define(events) {
+                        var names = (typeof events === 'array') ? events : arguments;
+                        var length = names.length;
+
+                        if (!self.events) {
+                            self.events = {};
+                        }
+
+                        for (var i=0; i < length; i++) {
+                            var eventName = names[i];
+
+                            var listener = self.events[eventName] = function listener(handler) {
+                                handlers.push(handler);
+                            };
+
+                            listener.any = function any() {
+                                return (handlers.length > 0);
+                            };
+
+                            listener.empty = function empty() {
+                                return (handlers.length <= 0);
+                            };
+
+                            listener.notify = function notify() {
+                                var length = handlers.length;
+
+                                for (var i=0; i < length; i++) {
+                                    var handler = handlers[i];
+
+                                    if (handler.apply(self, arguments)) {
+                                        break;
+                                    }
+                                }
+                            };
+                        }
+
+                        return context;
+                    }
+                },
+                $properties: {
+                    define: function define(name, type, initialValue) {
+                        if (typeof initialValue !== 'undefined' && initialValue.constructor !== type) {
+                            throw Exceptions.InvalidArgumentType(type, initialValue);
+                        }
+
+                        if (typeof self[name] !== 'undefined') {
+                            throw Exceptions.PropertyExists(name);
+                        }
+
+                        var accessor = self[name] = function accessor(value) {
+                            if (typeof value === 'undefined') {
+                                return accessor.$property.value;
+                            }
+
+                            if (value.constructor !== type) {
+                                throw Exceptions.InvalidArgumentType(type, value);
+                            }
+
+                            return (accessor.$property.value = value);
+                        };
+
+                        accessor.$property = {
+                            name: name,
+                            type: type,
+                            value: initialValue || null
+                        };
+
+                        accessor.revert = function revert() {
+                            return (accessor.$property.value = initialValue);
+                        };
+
+                        return context;
+                    }
+                },
+                $self: self
             };
 
             /// [b] A little more magic, we call the new constructor setting the "this"
@@ -238,6 +317,10 @@
         return ProxyClass;
     }
 
+    /// <summary>
+    /// We expose the DefineClass method, but you really should avoid using it and
+    /// leverage the BaseObject implementation.
+    /// </summary>
     Factory.DefineClass = defineClass;
 
     /* Classes */
@@ -246,7 +329,7 @@
     /// Although we expose the DefineClass method, try to avoid using that and base all your
     /// classes on the BaseObject or EcmaObject class.
     /// </summary>
-    var BaseObject = Factory.BaseObject = Factory.DefineClass(Object, function BaseObject() {
+    var BaseObject = Factory.BaseObject = defineClass(Object, function BaseObject() {
         return {
             dispose: function dispose() {}
         };
