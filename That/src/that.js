@@ -14,90 +14,138 @@
     /* Helper functions */
 
     var ArgumentsToArray = function ArgumentsToArray(array) {
-        return Array.prototype.slice.call(array, 0);
+        return Array.prototype.slice.call(array);
     };
 
     var At = function At(array, index) {
         return array.charAt ? array.charAt(index) : array[index];
     };
 
-    var Copy = function Copy(source, target, callback) {
-        if (IsOnlyMatchingType(source, Object)) {
-            var resultTarget = target || {};
+    var Copy = function Copy(source, deepCopy) {
+        var self = this;
 
-            IterateObject(source, function(value, key) {
-                resultTarget[key] = value;
+        if (deepCopy) {
+            if (IsMatchingType(source, Array)) {
+                var arr = [];
+                IterateArray(source, function(value) {
+                    arr.push(Copy.apply(self, [value, deepCopy]));
+                });
 
-                if (callback) {
-                    var result = callback.apply(this, [source, resultTarget, key, value]);
+                return arr;
+            } else if (IsOnlyMatchingType(source, Date)) {
+                return new Date(source);
+            } else if (IsOnlyMatchingType(source, Object)) {
+                var object = {};
+                IterateObject(source, function(value, key) {
+                    object[key] = Copy.apply(self, [value, deepCopy]);
+                });
 
-                    if (result) {
-                        return result;
-                    }
-                }
-            });
-
-            return resultTarget;
+                return object;
+            }
         }
 
         return source;
     };
 
-    var Clone = function Clone(source, target) {
-        var callback = function(source, target, key, value) {
-            var s = source[key], t = target[key];
-            if (IsOnlyMatchingType(s, Object)) {
-                t[key] = Copy.apply(this, [s, t]);
-            }
-        };
+    var CreateEvents = function CreateEvents(target, eventList) {
+        var eventNames = IsMatchingType(eventList, Array) ? eventList : ArgumentsToArray(arguments);
 
-        return Copy.apply(this, [source, target, callback]);
+        if (!target.events) {
+            target.events = {};
+        }
+
+        IterateArray(eventNames, function(eventName) {
+            var handlers = [];
+
+            var event = target.events[eventName] = function listener(handler) {
+                handlers.push(handler);
+
+                return this;
+            };
+
+            event.any = function any() {
+                return (handlers.length > 0);
+            };
+
+            event.none = function none() {
+                return (handlers.length === 0);
+            };
+
+            event.notify = function notify() {
+                var args = arguments;
+
+                IterateArray(handlers, function(handler) {
+                    handler.apply(target, args);
+                });
+
+                return this;
+            };
+        });
     };
 
-    var IsMatchingType = function IsMatchingType(source, target) {
+    var CreateProperties = function CreateProperties(source, target, options) {
+        var settings = Merge(options, {
+            bindingType: Enums.BindingTypes.ByReference
+        });
+
+        IterateObject(source, function(value, key) {
+            if (IsOnlyMatchingType(target[key], Object)) {
+                var capturedValue = value;
+                var eventName = key + 'Changed';
+
+                CreateEvents(target, eventName);
+
+                if (settings.bindingType === Enums.BindingTypes.ByValue) {
+                    capturedValue = Copy.apply(this, [value, true]);
+                }
+
+                target[key] = function accessor(value) {
+                    if (IsMatchingType(value, undefined)) {
+                        return capturedValue;
+                    }
+
+                    target.events[eventName].notify(capturedValue, value);
+
+                    capturedValue = value;
+                };
+            }
+        });
+    };
+
+    var IsMatchingType = function IsMatchingType(source, type) {
+        if (source === null || type === null) {
+            return (source === type);
+        }
+
+        if (typeof source === 'undefined' && typeof type === 'undefined') {
+            return true;
+        } else if (typeof type === 'undefined') {
+            return false;
+        }
+
         if (typeof type === 'string') {
-            return (typeof object === type);
-        } else if (typeof type === 'function') {
-            return object instanceof type;
-        } else if (type === Array) {
-            return is('array');
-        } else if (type === Boolean) {
-            return is('boolean');
-        } else if (type === Date) {
-            return is('date');
-        } else if (type === Function) {
-            return is('function');
+            // Special case for array
+            if (is(Array)) {
+                return (type === 'array');
+            }
+
+            return (typeof source === type);
+        }
+
+        // Special cases
+        if (type === String) {
+            return is('string');
         } else if (type === Number) {
             return is('number');
-        } else if (type === String) {
-            return is('string');
-        } else if (type === Object) {
-            return is('object');
+        } else if (type === Boolean) {
+            return is('boolean');
         }
 
-        return false;
+        return (source instanceof type);
     };
 
-    var IsOnlyMatchingType = function IsOnlyMatchingType(source, target) {
-        if (IsMatchingType(source, type)) {
-            if (IsMatchingType(target, Array)) {
-                return true;
-            } else if (IsMatchingType(target, Date)) {
-                return true;
-            } else if (IsMatchingType(target, Boolean)) {
-                return true;
-            } else if (IsMatchingType(target, Number)) {
-                return true;
-            } else if (IsMatchingType(target, String)) {
-                return true;
-            } else if (IsMatchingType(target, Function)) {
-                return true;
-            } else if (IsMatchingType(target, Object)) {
-                return true;
-            }
-        }
-
-        return false;
+    var IsOnlyMatchingType = function IsOnlyMatchingType(source, type) {
+        return IsMatchingType(source, type);
     };
 
     var IterateArray = function IterateArray(array, callback) {
@@ -154,6 +202,20 @@
         throw Exceptions.InvalidOperation('Could not iterate the object you provided.');
     };
 
+    var Merge = function Merge(source, target) {
+        if (!IsOnlyMatchingType(source, Object)) {
+            throw Exceptions.InvalidArgumentType(Object, source);
+        } else if (!IsOnlyMatchingType(target, Object)) {
+            throw Exceptions.InvalidArgumentType(Object, target);
+        }
+
+        IterateObject(source, function(value, key) {
+            if (!target.hasOwnProperty(key)) {
+                target[key] = source[key];
+            }
+        });
+    };
+
     var RemoveFromArray = function RemoveFromArray(array, startIndex, count) {
         // http://ejohn.org/blog/javascript-array-remove/
         var rest = array.slice((count || startIndex) + 1 || array.length);
@@ -163,13 +225,23 @@
 
     /* Enums */
 
-    var BindingTypes = {
+    var Enums = {};
+
+    Enums.BindingTypes = {
         ByReference: 0,
         ByValue: 1
     };
 
     /* That */
 
+    /// <summary>
+    /// Constructor that creates a wrapper around the object. Try to avoid writing
+    /// too much code in here. You will mostly see calls to the helper functions to
+    /// farm out the task. Consider this the "interface" or contract and the helper
+    /// functions the implementation. When documenting, document the interface and
+    /// not the helpers so as the helpers can do whatever it needs to without changing
+    /// the contract.
+    /// </summary>
     var That = function That(object) {
         var T = this;
 
@@ -202,20 +274,21 @@
             return (index >= 0 && index < object.length);
         };
 
+        /// <summary>
+        /// Clones the provided value. If the value is an object or array with objects,
+        /// the cloning will create new instances.
+        /// </summary>
         var clone = this.clone = function clone() {
-            return Clone.apply(this, [object]);
+            return Copy.apply(this, [object, true]);
         };
 
-        clone.to = function to(target) {
-            return Clone.apply(this, [object, target]);
-        };
-
+        /// <summary>
+        /// Copies the provided value. If the value is an object or array, the value is
+        /// simply returned to maintain the reference. If you wish to deep copy the object,
+        /// use the clone method.
+        /// </summary>
         var copy = this.copy = function copy() {
-            return Copy.apply(this, [object]);
-        };
-
-        copy.to = function to(target) {
-            return Copy.apply(this, [object, target]);
+            return Copy.apply(this, [object, false]);
         };
 
         /// <summary>
@@ -276,39 +349,12 @@
             return (typeof object === 'undefined' || object === null || object === '');
         };
 
+        /// <summary>
+        /// Creates the requested event listeners on the object.
+        /// </summary>
         var events = this.events = function events(eventList) {
-            var eventNames = IsMatchingType(eventList, Array) ? eventList : ArgumentsToArray(arguments);
-
-            if (!object.events) {
-                object.events = {};
-            }
-
-            IterateArray(eventNames, function(eventName) {
-                var handlers = [];
-
-                var event = object.events[eventName] = function listener(handler) {
-                    handlers.push(handler);
-
-                    return this;
-                };
-
-                event.any = function any() {
-                    return (handlers.length > 0);
-                };
-
-                event.none = function none() {
-                    return (handlers.length === 0);
-                };
-
-                event.notify = function notify() {
-                    var args = arguments;
-                    IterateArray(handlers, function(handler) {
-                        handler.apply(object, args);
-                    });
-
-                    return this;
-                };
-            });
+            CreateEvents(object, eventList);
+            return T;
         };
 
         /// <summary>
@@ -321,6 +367,13 @@
                     return true;
                 }
             });
+        };
+
+        /// <summary>
+        /// Returns the instance that we're wrapping.
+        /// </summary>
+        var instance = this.instance = function instance() {
+            return object;
         };
 
         /// <summary>
@@ -348,12 +401,26 @@
             return false;
         };
 
+        /// <summary>
+        /// Checks if the object's type does not match.
+        /// </summary>
         is.not = function not(type) {
             return !is(type);
         };
 
+        /// <summary>
+        /// Checks if the object's type does not match any of the requested types.
+        /// </summary>
         is.only = function only(type) {
             return IsOnlyMatchingType(object, type);
+        };
+
+        /// <summary>
+        /// Merges the properties from the source to the target when the property
+        /// does not already exist.
+        /// </summary>
+        var merge = function merge(source) {
+            return Merge(source, object);
         };
 
         /// <summary>
@@ -367,29 +434,24 @@
             has: function has(value) { return !has(value); }
         };
 
+        /// <summary>
+        /// Creates observable properties on the object. The properties follow
+        /// the standard jQuery way of handling get/set: propertyName() to get
+        /// and propertyName(value) to set. You can listen for each property
+        /// using the propertyNameChanged event.
+        /// </summary>
+        /// <remarks>
+        /// options = {
+        ///     bindingType: Enums.BindingTypes.ByReference
+        /// }
+        /// </remarks>
         var properties = function properties(source, options) {
-            var target = object;
-
-            IterateObject(source, function(value, key) {
-                if (IsOnlyMatchingType(target[key], Object)) {
-                    var capturedValue = value;
-
-                    if (options.bindingType === BindingTypes.ByValue) {
-                        capturedValue = Copy(value);
-                    }
-
-                    target[key] = function accessor(value) {
-                        if (IsMatchingType(value, undefined)) {
-                            return capturedValue;
-                        }
-
-                        capturedValue = value;
-                    };
-                }
-            });
+            CreateProperties(source, object, options);
+            return T;
         };
     };
 
+    That.Enums = Enums;
     That.Exceptions = Exceptions;
 
     /* Module management */

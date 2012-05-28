@@ -7,7 +7,7 @@
     var exports = (typeof module === 'undefined') ? ((typeof window === 'undefined') ? {} : window) : module.exports;
 
     /// <summary>
-    /// I have having to provide this on the String method, but at least it's just a fallback
+    /// I hate having to provide this on the String prototype, but at least it's just a fallback
     /// for browsers that don't support a native trim implementation.
     /// </summary>
     if (!String.prototype.trim) {
