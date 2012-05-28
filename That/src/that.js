@@ -84,31 +84,35 @@
     };
 
     var CreateProperties = function CreateProperties(source, target, options) {
-        var settings = Merge(options, {
+        var settings = Merge(options || {}, {
             bindingType: Enums.BindingTypes.ByReference
         });
 
         IterateObject(source, function(value, key) {
-            if (IsOnlyMatchingType(target[key], Object)) {
-                var capturedValue = value;
-                var eventName = key + 'Changed';
+            if (IsOnlyMatchingType(value, Object)) {
+                target[key] = {};
+                CreateProperties(value, target[key], options);
+                return;
+            }
 
-                CreateEvents(target, eventName);
+            var capturedValue = value;
+            var eventName = key + 'Changed';
 
-                if (settings.bindingType === Enums.BindingTypes.ByValue) {
-                    capturedValue = Copy.apply(this, [value, true]);
+            CreateEvents(target, eventName);
+
+            if (settings.bindingType === Enums.BindingTypes.ByValue) {
+                capturedValue = Copy.apply(this, [value, true]);
+            }
+
+            target[key] = function accessor(value) {
+                if (IsMatchingType(value, undefined)) {
+                    return capturedValue;
                 }
 
-                target[key] = function accessor(value) {
-                    if (IsMatchingType(value, undefined)) {
-                        return capturedValue;
-                    }
+                target.events[eventName].notify(capturedValue, value);
 
-                    target.events[eventName].notify(capturedValue, value);
-
-                    capturedValue = value;
-                };
-            }
+                capturedValue = value;
+            };
         });
     };
 
@@ -145,7 +149,46 @@
     };
 
     var IsOnlyMatchingType = function IsOnlyMatchingType(source, type) {
-        return IsMatchingType(source, type);
+        var wantsArray = (type === 'array' || type === Array);
+        var wantsDate = (type === Date);
+        var wantsFunction = (type === 'function' || type === Function);
+        var wantsObject = (type === 'object' || type === Object);
+        var wantsNumber = (type === 'number' || type === Number);
+        var wantsString = (type === 'string' || type === String);
+
+        if (wantsArray && !IsMatchingType(source, Array)) {
+            return false;
+        }
+
+        if (wantsFunction && !IsMatchingType(source, Function)) {
+            return false;
+        }
+
+        if (wantsDate && !IsMatchingType(source, Date)) {
+            return false;
+        }
+
+        if (wantsNumber && !IsMatchingType(source, Number)) {
+            return false;
+        }
+
+        if (wantsString && !IsMatchingType(source, String)) {
+            return false;
+        }
+
+        if (wantsObject) {
+            if (IsMatchingType(source, Function)) {
+                return false;
+            } else if (IsMatchingType(source, Array)) {
+                return false;
+            } else if (IsMatchingType(source, Date)) {
+                return false;
+            } else {
+                return (IsMatchingType(source, Object));
+            }
+        }
+
+        return true;
     };
 
     var IterateArray = function IterateArray(array, callback) {
@@ -203,9 +246,9 @@
     };
 
     var Merge = function Merge(source, target) {
-        if (!IsOnlyMatchingType(source, Object)) {
+        if (!IsMatchingType(source, Object)) {
             throw Exceptions.InvalidArgumentType(Object, source);
-        } else if (!IsOnlyMatchingType(target, Object)) {
+        } else if (!IsMatchingType(target, Object)) {
             throw Exceptions.InvalidArgumentType(Object, target);
         }
 
@@ -214,6 +257,8 @@
                 target[key] = source[key];
             }
         });
+
+        return target;
     };
 
     var RemoveFromArray = function RemoveFromArray(array, startIndex, count) {
@@ -445,7 +490,7 @@
         ///     bindingType: Enums.BindingTypes.ByReference
         /// }
         /// </remarks>
-        var properties = function properties(source, options) {
+        var properties = this.properties = function properties(source, options) {
             CreateProperties(source, object, options);
             return T;
         };

@@ -1,6 +1,7 @@
 (function() {
 
     var exports = (typeof module === 'undefined') ? window : module.exports;
+    var That = exports.That;
     var that = exports.that;
 
     var Data = function() {
@@ -124,6 +125,66 @@
                 object.events.testEvent.notify('a');
 
                 expect(paramValue).toBe('a');
+            });
+
+        });
+
+        describe('properties', function() {
+
+            it('should create properties', function() {
+                var object = {}, properties = {
+                    firstName: 'Mike',
+                    lastName: 'Pham'
+                };
+
+                that(object).properties(properties);
+
+                expect(object.firstName instanceof Function).toBe(true);
+                expect(object.firstName()).toBe(properties.firstName);
+            });
+
+            it('should be able to set property value by reference', function() {
+                var object = {}, properties = {
+                    firstName: 'Mike',
+                    lastName: 'Pham'
+                };
+
+                that(object).properties(properties);
+                object.firstName('Michael');
+
+                expect(object.firstName()).toBe('Michael');
+                expect(properties.firstName).toBe('Mike');
+            });
+
+            it('should be able to set property value by value', function() {
+                var object = {}, properties = {
+                    name: {
+                        first: 'Mike',
+                        last: 'Pham'
+                    }
+                };
+
+                that(object).properties(properties, { bindingType: That.Enums.BindingTypes.ByValue });
+                object.name.first('Michael');
+
+                expect(object.name === properties.name).toBe(false);
+                expect(object.name.first()).toBe('Michael');
+            });
+
+            it('should be able to get notifications on property changes', function() {
+                var object = {}, called = false, properties = {
+                    firstName: 'Mike',
+                    lastName: 'Pham'
+                };
+
+                that(object).properties(properties);
+                object.events.firstNameChanged(function() {
+                    called = true;
+                });
+                object.firstName('Michael');
+
+                expect(called).toBe(true);
+                expect(object.firstName()).not.toBe(properties.firstName);
             });
 
         });
