@@ -1,7 +1,7 @@
 (function() {
 
     var Factory = typeof require === 'function'
-        ? require('Factory/src/factory.js')
+        ? require('Factory/src/factory.js').Factory
         : window.Factory;
 
     describe('Factory.BaseObject', function() {
@@ -187,6 +187,24 @@
             }
 
             expect(expectation).toThrow(Factory.Exceptions.InvalidArgumentType(String, {}));
+        });
+
+        it('should be able to get notifications about property value changes', function() {
+            var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
+                var context = this;
+                context.$properties.define('firstName', String);
+
+                return {};
+            });
+
+            var propertyValue;
+            var propertyClass = new PropertyClass();
+            propertyClass.events.firstNameChanged(function(oldValue, newValue) {
+                propertyValue = newValue;
+            });
+            propertyClass.firstName('Michael');
+
+            expect(propertyClass.firstName()).toBe(propertyValue);
         });
 
         it('should be able to define events', function() {

@@ -1,8 +1,8 @@
 (function() {
 
     var exports = (typeof module === 'undefined') ? window : module.exports;
-    var That = exports.That;
-    var that = exports.that;
+    var That = exports.That || require('That/src/that.js').That;
+    var that = That.that;
 
     var Data = function() {
         return {

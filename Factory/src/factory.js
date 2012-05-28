@@ -142,6 +142,7 @@
             ///     forwarder for init methods.
             var context = {
                 $context: {},
+                $self: self,
                 $init: function $init() {
                     if (typeof self.init === 'function') {
                         return self.init.apply(self, arguments);
@@ -197,6 +198,10 @@
                             throw Exceptions.PropertyExists(name);
                         }
 
+                        var eventName = name + 'Changed';
+
+                        context.$events.define(eventName);
+
                         var accessor = self[name] = function accessor(value) {
                             if (typeof value === 'undefined') {
                                 return accessor.$property.value;
@@ -205,6 +210,8 @@
                             if (value.constructor !== type) {
                                 throw Exceptions.InvalidArgumentType(type, value);
                             }
+
+                            self.events[eventName].notify(accessor.$property.value, value);
 
                             return (accessor.$property.value = value);
                         };
@@ -221,8 +228,7 @@
 
                         return context;
                     }
-                },
-                $self: self
+                }
             };
 
             /// [b] A little more magic, we call the new constructor setting the "this"
@@ -334,96 +340,6 @@
             dispose: function dispose() {}
         };
     });
-
-    /// <summary>
-    /// Very crude implementation of ECMAScript 5's additional functionality. Note that we cannot
-    /// realistically support things like sealing and preventing extensions, but at least we can
-    /// stub the interface to make porting code later easier.
-    /// </summary>
-    var EcmaObjectTracker = (function() {
-        var instances = [];
-
-        var reclaim = function reclaim(array, from, to) {
-            // http://ejohn.org/blog/javascript-array-remove/
-            var rest = array.slice((to || from) + 1 || array.length);
-            array.length = from < 0 ? array.length + from : from;
-            return array.push.apply(array, rest);
-        };
-
-        instances.state = [];
-
-        return {
-            add: function add(instance) {
-                if (this.getIndex(instance) < 0) {
-                    instances.push(instance);
-                    instances.state.push({
-                        isExtensible: true
-                    });
-                }
-
-                return instances[this.getIndex(instance)];
-            },
-            create: function create() {
-
-            },
-            getIndex: function getIndex(instance) {
-                return instances.indexOf ? instances.indexOf(instance) : (function() {
-                    var index = instances.length;
-                    while(index--)
-                    {
-                        if (instances[index] === instance) {
-                            return index;
-                        }
-                    }
-
-                    return -1;
-                })();
-            },
-            getState: function getState(instance) {
-                var index = this.getIndex(instance);
-                return (index >=0 ) ? instances.state[index] : (function(idx){
-                    EcmaObjectTracker.add(instance);
-                    return instances.state[instances.length-1];
-                })(index);
-            },
-            isExtensible: function isExtensible(instance) {
-                return EcmaObjectTracker.getState(instance).isExtensible;
-            },
-            preventExtensions: function preventExtensions(instance) {
-                EcmaObjectTracker.getState(instance).isExtensible = false;
-            },
-            remove: function remove(instance) {
-                var index = this.getIndex(instance);
-                if (index >= 0) {
-                    reclaim(instances, index);
-                    reclaim(instances.state, index);
-                }
-
-                return this;
-            }
-        };
-
-    })();
-
-    /// <summary>
-    /// Although we expose the DefineClass method, try to avoid using that and base all your
-    /// classes on the BaseObject or EcmaObject class.
-    /// </summary>
-    var EcmaObject = Factory.EcmaObject = BaseObject.extend(function EcmaObject() {
-        this.$init();
-        var self = EcmaObjectTracker.add(this.$self);
-
-        return {
-            dispose: function dispose() {
-                EcmaObjectTracker.remove(self);
-                this.$base();
-            }
-        }
-    });
-
-    EcmaObject.create = Object.create || EcmaObjectTracker.create;
-    EcmaObject.isExtensible = Object.isExtensible || EcmaObjectTracker.isExtensible;
-    EcmaObject.preventExtensions = Object.preventExtensions || EcmaObjectTracker.preventExtensions;
 
     /// <summary>
     /// Finally, we expose this to the outside world via the exports parameter.

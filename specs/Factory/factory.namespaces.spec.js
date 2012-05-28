@@ -1,7 +1,7 @@
 (function() {
 
     var Factory = typeof require === 'function'
-        ? require('Factory/src/factory.js')
+        ? require('Factory/src/factory.js').Factory
         : window.Factory;
 
     describe('Factory.namespace', function() {
