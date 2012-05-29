@@ -11,9 +11,7 @@
         var instance = this;
         instance.$init(selector);
 
-        return {
-
-        };
+        return {};
     });
 
     var ViewPort = Element.extend(function ViewPort(selector) {
@@ -22,7 +20,6 @@
 
         return {
             update: function update(interval) {
-
             }
         };
     });

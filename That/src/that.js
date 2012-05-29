@@ -413,6 +413,11 @@
         /// value.
         /// </summary>
         var has = this.has = function has(value) {
+            // This is far faster when available...
+            if (IsOnlyMatchingType(value, Array) && value.indexOf) {
+                return value.indexOf(value);
+            }
+
             return Iterate(object, function(v) {
                 if (v === value) {
                     return true;
