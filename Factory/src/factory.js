@@ -341,6 +341,66 @@
         };
     });
 
+    var Timer = Factory.Timer = Factory.BaseObject.extend(function Timer() {
+        this.$init();
+
+        var context = (this.$context.timers = []);
+        var self = this.$self;
+
+        function getIndexOf(callback) {
+            if (context.timers.indexOf) {
+                return context.timers.indexOf(callback);
+            }
+
+            var length = context.timers.length;
+
+            for (var i=0; i < length; i++) {
+                if (context[i] === callback) {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        return {
+            run: {
+                every: function every(callback, interval) {
+                    if (typeof callback !== 'function') {
+                        throw Exceptions.InvalidArgumentType(Function, callback);
+                    } else if (typeof interval !== 'number') {
+                        throw Exceptions.InvalidArgumentType(Number, interval);
+                    }
+
+                    var index = getIndexOf(callback);
+
+                    if (index < 0) {
+                        clearInterval(context.timers[index]);
+                    }
+
+                    callback.$timer = setInterval(callback, interval);
+                    context.timers.push(callback);
+
+                    return self;
+                },
+                once: function once(callback, interval) {
+                    setTimeout(callback, interval);
+
+                    return self;
+                }
+            },
+            stop: function stop(callback) {
+                var index = getIndexOf(callback);
+
+                if (index < 0) {
+                    clearInterval(context.timers[index]);
+                }
+
+                return self;
+            }
+        };
+    });
+
     /// <summary>
     /// Finally, we expose this to the outside world via the exports parameter.
     /// </summary>
