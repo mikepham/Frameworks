@@ -122,6 +122,27 @@
         });
     };
 
+    var FormatString = function FormatString(formattedString, parameters) {
+        var result = formattedString;
+        var args = ArgumentsToArray(arguments);
+
+        if (args.length === 2 && IsOnlyMatchingType(parameters, Object)) {
+            IterateObject(parameters, function(value, key) {
+                var regex = new RegExp(FormatString('{:{0}}', key), 'g');
+                result = result.replace(regex, value);
+            });
+        } else if (IsMatchingType(formattedString, String)) {
+            var handleMatchedIndex = function(match, index) {
+                var idx = (Number(index) + 1);
+                return (typeof args[idx] !== 'undefined') ? args[idx] : '';
+            };
+
+            return result.replace(/\{(\d+)\}/g, handleMatchedIndex);
+        }
+
+        return result;
+    };
+
     var IsMatchingType = function IsMatchingType(source, type) {
         if (source === null || type === null) {
             return (source === type);
@@ -135,7 +156,7 @@
 
         if (typeof type === 'string') {
             // Special case for array
-            if (is(Array)) {
+            if (IsMatchingType(source, Array)) {
                 return (type === 'array');
             }
 
@@ -144,11 +165,11 @@
 
         // Special cases
         if (type === String) {
-            return is('string');
+            return IsMatchingType(source, 'string');
         } else if (type === Number) {
-            return is('number');
+            return IsMatchingType(source, 'number');
         } else if (type === Boolean) {
-            return is('boolean');
+            return IsMatchingType(source, 'boolean');
         }
 
         return (source instanceof type);
@@ -406,6 +427,11 @@
         var events = this.events = function events(eventList) {
             CreateEvents(object, eventList);
             return T;
+        };
+
+        var format = this.format = function format() {
+            var args = [object].concat(ArgumentsToArray(arguments));
+            return FormatString.apply(this, args);
         };
 
         /// <summary>

@@ -129,6 +129,15 @@
 
         });
 
+        describe('format', function() {
+
+            it('should format a string with index-based parameters', function() {
+                var formattedString = 'The {0} {1} {2} jumped over the moon.';
+                expect(that(formattedString).format('quick', 'brown', 'fox')).toBe('The quick brown fox jumped over the moon.');
+            });
+
+        });
+
         describe('properties', function() {
 
             it('should create properties', function() {

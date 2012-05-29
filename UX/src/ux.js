@@ -1,9 +1,15 @@
-(function(exports) {
+(function(W) {
+
+    var Exceptions = {
+        RequiresLibrary: function RequiresLibrary(name) {
+            return new Error('Requires ' + name);
+        }
+    };
 
     // This is client-side only, so we can safely assume that window will contain our
     // Factory framework.
-    var Factory = exports.Factory;
-    var that = exports.that;
+    var Factory = W.Factory || (function() { throw Exceptions.RequiresLibrary('Factory'); });
+    var that = W.that || (function() { throw Exceptions.RequiresLibrary('That'); });
 
     var UX = {};
 
@@ -11,7 +17,8 @@
         var instance = this;
         instance.$init(selector);
 
-        return {};
+        return {
+        };
     });
 
     var ViewPort = Element.extend(function ViewPort(selector) {
@@ -19,8 +26,6 @@
         instance.$init(selector);
 
         return {
-            update: function update(interval) {
-            }
         };
     });
 
