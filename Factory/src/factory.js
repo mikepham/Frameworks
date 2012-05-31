@@ -16,6 +16,28 @@
         };
     }
 
+    if (!Array.prototype.indexOf) {
+        Array.prototype.indexOf = function indexOf(value) {
+            var length = this.length;
+
+            for (var i=0; i < length; i++) {
+                if (this[i] === value) {
+                    return i;
+                }
+            }
+
+            return -1;
+        };
+    }
+
+    if (!Array.prototype.remove) {
+        Array.prototype.remove = function remove(from, to) {
+            var rest = this.slice((to || from) + 1 || this.length);
+            this.length = from < 0 ? this.length + from : from;
+            return this.push.apply(this, rest);
+        };
+    }
+
     var Factory = {};
 
     /* Exceptions */
@@ -189,12 +211,14 @@
                     }
                 },
                 $properties: {
-                    define: function define(name, type, initialValue) {
+                    define: function define(name, type, initialValue, container) {
+                        var instance = container || self;
+
                         if (typeof initialValue !== 'undefined' && initialValue.constructor !== type) {
                             throw Exceptions.InvalidArgumentType(type, initialValue);
                         }
 
-                        if (typeof self[name] !== 'undefined') {
+                        if (typeof instance[name] !== 'undefined') {
                             throw Exceptions.PropertyExists(name);
                         }
 
@@ -202,7 +226,7 @@
 
                         context.$events.define(eventName);
 
-                        var accessor = self[name] = function accessor(value) {
+                        var accessor = instance[name] = function accessor(value) {
                             if (typeof value === 'undefined') {
                                 return accessor.$property.value;
                             }
@@ -344,24 +368,14 @@
     var Timer = Factory.Timer = Factory.BaseObject.extend(function Timer() {
         this.$init();
 
-        var context = (this.$context.timers = []);
+        var timers = (this.$context.timers = []);
         var self = this.$self;
 
-        function getIndexOf(callback) {
-            if (context.timers.indexOf) {
-                return context.timers.indexOf(callback);
+        self.Exceptions = {
+            CallbackNotFound: function CallbackNotFound() {
+                return new Error('Could not locate the provided callback method.');
             }
-
-            var length = context.timers.length;
-
-            for (var i=0; i < length; i++) {
-                if (context[i] === callback) {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
+        };
 
         return {
             run: {
@@ -372,14 +386,10 @@
                         throw Exceptions.InvalidArgumentType(Number, interval);
                     }
 
-                    var index = getIndexOf(callback);
-
-                    if (index < 0) {
-                        clearInterval(context.timers[index]);
-                    }
+                    self.run.stop(callback);
 
                     callback.$timer = setInterval(callback, interval);
-                    context.timers.push(callback);
+                    timers.push(callback);
 
                     return self;
                 },
@@ -390,15 +400,105 @@
                 }
             },
             stop: function stop(callback) {
-                var index = getIndexOf(callback);
+                var index = timers.indexOf(callback);
 
-                if (index < 0) {
-                    clearInterval(context.timers[index]);
+                if (index >= 0 && timers[index].$timer) {
+                    clearInterval(timers[index].$timer);
+                    timers.remove(index);
+                } else {
+                    throw self.Exceptions.CallbackNotFound();
                 }
 
                 return self;
             }
         };
+    });
+
+    var Observable = Factory.Observable = BaseObject.extend(function Observable(model, name) {
+        this.$init();
+
+        var detectType = function detectType(object) {
+            if (object instanceof Array || typeof object === 'array') {
+                return Array;
+            } else if (object instanceof Date || typeof object === 'date') {
+                return Date;
+            } else if (object instanceof Boolean || typeof object === 'boolean') {
+                return Boolean;
+            } else if (object instanceof String || typeof object === 'string') {
+                return String;
+            } else if (object instanceof Number || typeof object === 'number') {
+                return Number;
+            } else if (object instanceof Function || typeof object === 'function') {
+                return Function;
+            }
+
+            return object.constructor;
+        };
+
+        var properties = this.$properties;
+
+        (function bind(source, target) {
+
+            for (var propertyName in source) {
+                if (source.hasOwnProperty(propertyName)) {
+                    if (typeof target[propertyName] === 'undefined') {
+                        var value = source[propertyName];
+                        var valueType = detectType(value);
+
+                        if (valueType === Object) {
+                            var container = target[propertyName] = {};
+                            bind(source[propertyName], container);
+                        } else {
+                            properties.define(propertyName, valueType, value, target);
+                        }
+                    }
+                }
+            }
+
+        })(model, this.$self);
+
+        return {
+            dispose: function dispose() {
+                this.$base();
+            },
+            model: function model() {
+                return model;
+            },
+            name: function name() {
+                return name;
+            }
+        };
+    });
+
+    var DataBinder = Factory.DataBinder = BaseObject.extend(function DataBinder() {
+        this.$init();
+
+        var models = (this.$context.models = {});
+
+        var members = {};
+
+        members.bind = function bind() {
+            // Override this method to actually bind to something.
+        };
+
+        members.models =  {
+            add: function add(name, model) {
+                this.remove.apply(this, [name]);
+
+                return (models[name] = new Observable(model, name));
+            },
+            remove: function remove(name) {
+                if (models[name]) {
+                    models[name].dispose();
+                    models[name] = undefined;
+                }
+
+                return this;
+            }
+        };
+
+
+        return members;
     });
 
     /// <summary>

@@ -288,6 +288,29 @@
 
         });
 
+        describe('Observable', function() {
+
+            it('should create an observable and be able to bind to a model', function() {
+                var model = {
+                    id: 1001,
+                    name: 'Rifle',
+                    description: '',
+                    dates: {
+                        created: Date.now(),
+                        modified: Date.now()
+                    },
+                    discounts: [],
+                    MSRP: 649.99
+                };
+
+                var observable = new Factory.Observable(model);
+                console.log(observable.constructor.toString());
+                expect(typeof observable.id).toBe('function');
+                expect(typeof observable.dates.created).toBe('function');
+            });
+
+        });
+
     });
 
 })();

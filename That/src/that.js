@@ -566,6 +566,45 @@
         }
     };
 
+    var installation = {};
+
+    That.install = function install() {
+        function Warning(message) {
+            return '[WARNING] Did not install + ' + message + ' because it was already there.'
+                + ' The current implementation may not be compatible.';
+        }
+
+        if (!String.prototype.format) {
+            installation['format'] = { $prototype: String.prototype, original: String.prototype.format };
+
+            String.prototype.format = function format() {
+                var args = [this].concat(ArgumentsToArray(arguments));
+
+                return FormatString.apply(this, args);
+            };
+        } else {
+            console.log(Warning('String.format'));
+        }
+
+        if (!Array.prototype.indexOf) {
+            Array.prototype.indexOf = function indexOf(value) {
+                installation['indexOf'] = { $prototype: Array.prototype, original: Array.prototype.indexOf };
+
+                return IterateArray(this, function(element) {
+                    return (element === value);
+                });
+            };
+        } else {
+            console.log(Warning('Array.indexOf'));
+        }
+    };
+
+    That.uninstall = function uninstall() {
+        IterateObject(installation, function(value, key) {
+            value.$prototype[key] = value.original;
+        });
+    };
+
     exports.That = That;
 
     That.that = exports.that = function that(object) {
