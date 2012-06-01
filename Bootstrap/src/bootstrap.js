@@ -1,79 +1,86 @@
 (function() {
 
-    var Browser = {
-        install: function install() {
-            var exports = function exports(key) {
-                window.ENV.exports = (window.ENV.exports || {});
+    var exports = (typeof module !== 'undefined') ? module.exports : window.API || (window.API = {});
 
-                return (window.ENV.exports[key] || (window.ENV.exports[key] = {}));
-            };
+    var BrowserScriptLoader = function BrowserScriptLoader() {
+        var scripts = {};
 
-            return window.ENV = {
-                name: 'browser',
-                register: function register(key) {
-                },
-                resolve: function resolve(url, key, callback) {
-                    var self = this;
-                    var head = document.getElementsByTagName('head')[0];
+        var urlToKey = function filenameToKey(url) {
+            return url.replace(/[^a-z0-9]+/g, '_');
+        };
 
-                    var script = document.createElement('script');
-                    script.type = 'text/javascript';
-
-                    var cleanup = function cleanup() {
-                        head.removeChild(script);
-                    };
-
-                    if (script.readyState) {
-                        script.onreadystatechange = function(){
-                            if (script.readyState == 'loaded' ||
-                                script.readyState == 'complete'){
-                                script.onreadystatechange = null;
-
-                                callback.apply(self, [exports(key)]);
-                                cleanup();
-                            }
-                        };
-                    } else {
-                        script.onload = function(){
-                            callback.apply(self, [exports(key)]);
-                            cleanup();
-                        };
-                    }
-
-                    script.src = url;
-                    head.appendChild(script);
-
-                    setTimeout(function() { cleanup(); }, 1000);
-                }
-            };
-        },
-        isRunning: function isRunning() {
-            return (typeof window !== 'undefined');
-        }
-    };
-
-    var NodeJS = {
-        install: function install() {
-            module.exports.ENV = {
-                name: 'nodejs',
-                resolve: function resolve(url, key, callback) {
-                    return callback.apply(this, [require(url)]);
-                }
+        var injectScript = function injectScript(script) {
+            if (script.state === ScriptStates.Completed) {
             }
-        },
-        isRunning: function isRunning() {
-            return (typeof module !== 'undefined' && typeof require === 'function');
-        }
+        };
+
+        /// #region Interface Members
+
+        this.defaultPath = function defaultPath() {
+            return window.document.location.hostname;
+        };
+
+        this.load = function load(url, callback) {
+            var key = urlToKey(url);
+
+            if (!scripts[key]) {
+                scripts[key] = {
+                    id: key,
+                    url: url,
+                    state: ScriptStates.Loading
+                };
+            }
+
+            injectScript(scripts[key]);
+        };
+
+        /// #endregion Interface Members
     };
 
-    var Environments = [Browser, NodeJS];
+    var NodeJsScriptLoader = function NodeJsScriptLoader() {
+        this.defaultPath = function defaultPath() {
+            return process.cwd();
+        };
 
-    for (var i=0; i < Environments.length; i++) {
-        var environment = Environments[i];
+        this.load = function load(url, callback) {
+            return callback ? callback.apply(this, [require(url)]) : require(url);
+        };
+    };
 
-        if (environment.isRunning()) {
-            return environment.install();
+    var CreateScriptLoader = function CreateScriptLoader() {
+        if (typeof require === 'function') {
+            return new NodeJsScriptLoader();
         }
-    }
+
+        if (window.API) {
+            return new BrowserScriptLoader();
+        }
+
+        throw new Error('Could not create the proper script loader.');
+    };
+
+    var ScriptStates = {
+        None: 0,
+        Loading: 1,
+        Completed: 2
+    };
+
+    var BootStrap = (function() {
+        var loader = CreateScriptLoader();
+
+        var context = {
+            path: loader.defaultPath()
+        };
+
+        return {
+            use: function use(url, callback) {
+                return loader.load(url, callback);
+            }
+        };
+    })();
+
+    BootStrap.ScriptStates = ScriptStates;
+
+    exports.BootStrap = BootStrap;
 
 })();
