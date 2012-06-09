@@ -4,7 +4,7 @@
     /// This is a special import that checks if we are running in a NodeJS environment or
     /// running within a browser.
     /// </summary>
-    var exports = (typeof module === 'undefined') ? ((typeof window === 'undefined') ? {} : window) : module.exports;
+    var API = (typeof module !== 'undefined') ? module.exports : this.API || (this.API = {});
 
     /* Exceptions */
 
@@ -143,17 +143,25 @@
         return result;
     };
 
+    var IsJavaScriptType = function IsJavaScriptType(source, type) {
+        return (type === Object.prototype.toString.call(source).slice(8, -1).toLowerCase());
+    };
+
     var IsMatchingType = function IsMatchingType(source, type) {
+        // If either of them is null, we just do a straight comparison.
         if (source === null || type === null) {
             return (source === type);
         }
 
+        // Short-circuit out if we have invalid parameters.
         if (typeof source === 'undefined' && typeof type === 'undefined') {
             return true;
-        } else if (typeof type === 'undefined') {
+        } else if (typeof source === 'undefined' || typeof type === 'undefined') {
             return false;
         }
 
+        // If the type is a string value, we just need to call typeof and match,
+        // except for the special case of arrays.
         if (typeof type === 'string') {
             // Special case for array
             if (IsMatchingType(source, Array)) {
@@ -165,11 +173,11 @@
 
         // Special cases
         if (type === String) {
-            return IsMatchingType(source, 'string');
+            return IsJavaScriptType(source, 'string');
         } else if (type === Number) {
-            return IsMatchingType(source, 'number');
+            return IsJavaScriptType(source, 'number');
         } else if (type === Boolean) {
-            return IsMatchingType(source, 'boolean');
+            return IsJavaScriptType(source, 'boolean');
         }
 
         return (source instanceof type);
@@ -314,7 +322,7 @@
     /// not the helpers so as the helpers can do whatever it needs to without changing
     /// the contract.
     /// </summary>
-    var That = function That(object) {
+    var That = API.That = function That(object) {
         var T = this;
 
         /// <summary>
@@ -544,27 +552,7 @@
         scripts: {}
     };
 
-    var handleInclude = function handleInclude(filename) {
-        Modules.includes++;
-    };
-
-    That.include = function include(files) {
-        var fileNames = typeof files === 'array' ? files : Array.prototype.slice.call(arguments, 0);
-
-        Modules.including = fileNames.length;
-
-        for (var i=0; i < Modules.including; i++) {
-            var filename = fileNames[i];
-            That.include.initializer(filename, handleInclude);
-        }
-    };
-
-    That.include.initializer = function initializer(filename, callback) {
-        if (typeof require === 'function') {
-            var node = Modules.scripts[filename] = require(filename);
-            callback(filename, node);
-        }
-    };
+    /* Installation management */
 
     var installation = {};
 
@@ -605,9 +593,7 @@
         });
     };
 
-    exports.That = That;
-
-    That.that = exports.that = function that(object) {
+    API.that = function that(object) {
         return new That(object);
     };
 

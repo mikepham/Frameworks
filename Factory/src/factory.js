@@ -4,7 +4,7 @@
     /// This is a special import that checks if we are running in a NodeJS environment or
     /// running within a browser.
     /// </summary>
-    var exports = (typeof module === 'undefined') ? ((typeof window === 'undefined') ? {} : window) : module.exports;
+    var API = (typeof module !== 'undefined') ? module.exports : this.API || (this.API = {});
 
     /// <summary>
     /// I hate having to provide this on the String prototype, but at least it's just a fallback
@@ -38,7 +38,7 @@
         };
     }
 
-    var Factory = {};
+    var Factory = API.Factory = {};
 
     /* Exceptions */
 
@@ -121,7 +121,7 @@
 
     /// <summary>
     /// Attempts to get the name of the particular constructor. If we cannot achieve this (IE),
-    /// we callback on parsing the function text. If that fails, then I don't know what else to
+    /// we fallback on parsing the function text. If that fails, then I don't know what else to
     /// try.
     /// </summary>
     function parseFunctionName(type) {
@@ -155,7 +155,7 @@
 
         /// [2] Create a proxy constructor that will be returned. This is what
         ///     you will call "new" against.
-        var ProxyClass = function ProxyClass() {
+        var ProxyConstructor = function ProxyConstructor() {
             var self = this;
             var handlers = [];
 
@@ -302,13 +302,13 @@
         /// [3] A little bit of magic here. We actually create the base constructor
         ///     and assign it to prototype so that "instanceof" checks work correctly.
         ///     We also set the prototype's constructor.
-        ProxyClass.prototype = new baseType();
-        ProxyClass.prototype.constructor = type;
+        ProxyConstructor.prototype = new baseType();
+        ProxyConstructor.prototype.constructor = type;
 
         /// [4] We create an extend method that is attached to every constructor returned
         ///     so that inheriting a class is easy. Extend will always know who the base
         ///     constructor is, thanks to the closure.
-        ProxyClass.extend = (function() {
+        ProxyConstructor.extend = (function() {
             return function extend(constructor, namespace) {
                 if (typeof constructor !== 'function') {
                     throw Exceptions.MissingConstructor();
@@ -318,18 +318,21 @@
                     throw Exceptions.MissingConstructorName();
                 }
 
-                var proxy = defineClass(ProxyClass, constructor);
+                var proxy = defineClass(ProxyConstructor, constructor);
                 proxy.$type.namespace = namespace || proxy.$type.namespace;
 
                 return proxy;
             };
         })();
 
+        ProxyConstructor.Create = function Create() {
+        };
+
         /// [5] Our type information object that stores metadata about the class being
         ///     defined. A lot of these are convenience properties/functions so that
         ///     you don't have to do all kinds of crazy stuff to get to it. It's attached
         ///     to the constructor, NOT the instantiated instance.
-        ProxyClass.$type = {
+        ProxyConstructor.$type = {
             base: baseType,
             baseName: baseTypeName,
             constructor: type,
@@ -340,11 +343,11 @@
                 return [this.namespace, this.name].join('.');
             },
             namespaceObject: function namespaceObject() {
-                return NamespaceManager.get(ProxyClass.$type.namespace);
+                return NamespaceManager.get(ProxyConstructor.$type.namespace);
             }
         };
 
-        return ProxyClass;
+        return ProxyConstructor;
     }
 
     /// <summary>
@@ -359,62 +362,13 @@
     /// Although we expose the DefineClass method, try to avoid using that and base all your
     /// classes on the BaseObject or EcmaObject class.
     /// </summary>
-    var BaseObject = Factory.BaseObject = defineClass(Object, function BaseObject() {
+    Factory.BaseObject = API.BaseObject = Factory.DefineClass(Object, function BaseObject() {
         return {
             dispose: function dispose() {}
         };
     });
 
-    var Timer = Factory.Timer = Factory.BaseObject.extend(function Timer() {
-        this.$init();
-
-        var timers = (this.$context.timers = []);
-        var self = this.$self;
-
-        self.Exceptions = {
-            CallbackNotFound: function CallbackNotFound() {
-                return new Error('Could not locate the provided callback method.');
-            }
-        };
-
-        return {
-            run: {
-                every: function every(callback, interval) {
-                    if (typeof callback !== 'function') {
-                        throw Exceptions.InvalidArgumentType(Function, callback);
-                    } else if (typeof interval !== 'number') {
-                        throw Exceptions.InvalidArgumentType(Number, interval);
-                    }
-
-                    self.run.stop(callback);
-
-                    callback.$timer = setInterval(callback, interval);
-                    timers.push(callback);
-
-                    return self;
-                },
-                once: function once(callback, interval) {
-                    setTimeout(callback, interval);
-
-                    return self;
-                }
-            },
-            stop: function stop(callback) {
-                var index = timers.indexOf(callback);
-
-                if (index >= 0 && timers[index].$timer) {
-                    clearInterval(timers[index].$timer);
-                    timers.remove(index);
-                } else {
-                    throw self.Exceptions.CallbackNotFound();
-                }
-
-                return self;
-            }
-        };
-    });
-
-    var Observable = Factory.Observable = BaseObject.extend(function Observable(model, name) {
+    Factory.Observable = API.Observable = API.BaseObject.extend(function Observable(model, name) {
         this.$init();
 
         var detectType = function detectType(object) {
@@ -470,7 +424,56 @@
         };
     });
 
-    var DataBinder = Factory.DataBinder = BaseObject.extend(function DataBinder() {
+    Factory.Timer = API.Timer = API.BaseObject.extend(function Timer() {
+        this.$init();
+
+        var timers = (this.$context.timers = []);
+        var self = this.$self;
+
+        self.Exceptions = {
+            CallbackNotFound: function CallbackNotFound() {
+                return new Error('Could not locate the provided callback method.');
+            }
+        };
+
+        return {
+            run: {
+                every: function every(callback, interval) {
+                    if (typeof callback !== 'function') {
+                        throw Exceptions.InvalidArgumentType(Function, callback);
+                    } else if (typeof interval !== 'number') {
+                        throw Exceptions.InvalidArgumentType(Number, interval);
+                    }
+
+                    self.run.stop(callback);
+
+                    callback.$timer = setInterval(callback, interval);
+                    timers.push(callback);
+
+                    return self;
+                },
+                once: function once(callback, interval) {
+                    setTimeout(callback, interval);
+
+                    return self;
+                }
+            },
+            stop: function stop(callback) {
+                var index = timers.indexOf(callback);
+
+                if (index >= 0 && timers[index].$timer) {
+                    clearInterval(timers[index].$timer);
+                    timers.remove(index);
+                } else {
+                    throw self.Exceptions.CallbackNotFound();
+                }
+
+                return self;
+            }
+        };
+    });
+
+    Factory.DataBinder = API.BaseObject.extend(function DataBinder() {
         this.$init();
 
         var models = (this.$context.models = {});
@@ -500,10 +503,5 @@
 
         return members;
     });
-
-    /// <summary>
-    /// Finally, we expose this to the outside world via the exports parameter.
-    /// </summary>
-    exports.Factory = Factory;
 
 })();

@@ -4,10 +4,50 @@
 
     <head>
         <title>DEMO: End-to-End</title>
-        <script type="text/javascript" src="../../../lib/jquery-1.7.2.js"></script>
+        <script type="text/javascript" src="../../../Bootstrap/src/bootstrap.js"></script>
+        <script type="text/javascript">
+            var API = window.API;
+            var bootstrap = API.Bootstrap;
+
+            var scripts = {
+                basePath: '../../../lib/',
+                jQuery: 'jquery-1.7.2.js',
+                scripts: {
+                    basePath: '../../../',
+                    factory: 'Factory/src/factory.js',
+                    that: 'That/src/that.js',
+                    scripts: {
+                        ux: 'UX/src/ux.js',
+                        scripts: {
+                            basePath: './',
+                            application: 'application.js'
+                        }
+                    }
+                }
+            };
+
+            // Load all the scripts, after which the callback is called so we can access
+            // the API through the api parameter.
+            bootstrap.inject(scripts, function(api) {
+                $(function() {
+                    // The DOM is now ready to use, thanks to the inclusion of jQuery
+                    // being injected into the page.
+                    console.log('document.ready');
+
+                    api.Application;
+                });
+
+                // The DOM is not ready yet, this only lets us know that the scripts we
+                // requested to load are done loading.
+                console.log('bootstrap.load');
+            });
+        </script>
     </head>
 
     <body>
+
+        <a href="../../../tests.html">Run All Tests</a>
+
     </body>
 
 </html>

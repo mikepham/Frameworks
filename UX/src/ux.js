@@ -1,4 +1,4 @@
-(function(W) {
+(function(api) {
 
     var Exceptions = {
         RequiresLibrary: function RequiresLibrary(name) {
@@ -8,8 +8,8 @@
 
     // This is client-side only, so we can safely assume that window will contain our
     // Factory framework.
-    var Factory = W.Factory || (function() { throw Exceptions.RequiresLibrary('Factory'); });
-    var that = W.that || (function() { throw Exceptions.RequiresLibrary('That'); });
+    var Factory = api.Factory || (function() { throw Exceptions.RequiresLibrary('Factory'); });
+    var that = api.that || (function() { throw Exceptions.RequiresLibrary('That'); });
 
     var UX = {};
 
@@ -29,4 +29,4 @@
         };
     });
 
-})(window);
+})(window.API);

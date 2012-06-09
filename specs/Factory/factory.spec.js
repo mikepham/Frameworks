@@ -1,8 +1,12 @@
 (function() {
 
-    var Factory = typeof require === 'function'
-        ? require('Factory/src/factory.js').Factory
-        : window.Factory;
+    /// <summary>
+    /// This is a special import that checks if we are running in a NodeJS environment or
+    /// running within a browser.
+    /// </summary>
+    var API = (typeof module !== 'undefined') ? module.exports : this.API || (this.API = {});
+
+    var Factory = API.Factory;
 
     describe('Factory.BaseObject', function() {
 
@@ -304,7 +308,6 @@
                 };
 
                 var observable = new Factory.Observable(model);
-                console.log(observable.constructor.toString());
                 expect(typeof observable.id).toBe('function');
                 expect(typeof observable.dates.created).toBe('function');
             });

@@ -1,8 +1,13 @@
 (function() {
 
-    var exports = (typeof module === 'undefined') ? window : module.exports;
-    var That = exports.That || require('That/src/that.js').That;
-    var that = That.that;
+    /// <summary>
+    /// This is a special import that checks if we are running in a NodeJS environment or
+    /// running within a browser.
+    /// </summary>
+    var API = (typeof module !== 'undefined') ? module.exports : this.API || (this.API = {});
+
+    var That = API.That;
+    var that = API.that;
 
     var Data = function() {
         return {
