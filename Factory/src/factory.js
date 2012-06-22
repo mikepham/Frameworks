@@ -131,11 +131,7 @@
 
         var name = /\W*function\s+([\w\$]+)\(/.exec(type);
 
-        if (name) {
-            return name[1];
-        }
-
-        return undefined;
+        return name ? name[1] : undefined;
     }
 
     /// <summary>
@@ -163,15 +159,15 @@
             ///     lets us have a nice "protected" variable space. We also store the
             ///     forwarder for init methods.
             var context = {
-                $context: {},
-                $self: self,
-                $init: function $init() {
+                _context: {},
+                _instance: self,
+                _init: function() {
                     if (typeof self.init === 'function') {
-                        return self.init.apply(self, arguments);
+                        return self.init.apply(context, arguments);
                     }
                 },
-                $events: {
-                    define: function define(events) {
+                _events: {
+                    define: function(events) {
                         var names = (typeof events === 'array') ? events : arguments;
                         var length = names.length;
 
@@ -210,8 +206,8 @@
                         return context;
                     }
                 },
-                $properties: {
-                    define: function define(name, type, initialValue, container) {
+                _properties: {
+                    define: function(name, type, initialValue, container) {
                         var instance = container || self;
 
                         if (typeof initialValue !== 'undefined' && initialValue.constructor !== type) {
@@ -224,7 +220,7 @@
 
                         var eventName = name + 'Changed';
 
-                        context.$events.define(eventName);
+                        context._events.define(eventName);
 
                         var accessor = instance[name] = function accessor(value) {
                             if (typeof value === 'undefined') {
@@ -266,7 +262,7 @@
             for (var memberName in members) {
                 if (members.hasOwnProperty(memberName)) {
                     var member = members[memberName];
-                    var baseMember = context.$self[memberName];
+                    var baseMember = context._instance[memberName];
 
                     /// [d] This creates another closure so that we trap the correct
                     ///     values regardless of who calls this method before or after.
@@ -274,29 +270,31 @@
                     ///     to the $base property and then call our main method. This
                     ///     achieves the effect of having base methods that you can
                     ///     call or completely ignore when overriding.
-                    (function(memberFunction, baseFunction) {
-                        context.$self[memberName] = function() {
+                    (function(memberFunction, baseFunction, memberFunctionName) {
+                        context._instance[memberName] = function() {
                             var $method = this;
-                            $method.$context = context.$context;
+                            $method._context = context._context;
 
-                            $method.base = (typeof baseFunction === 'function') ? baseFunction : function() {
+                            $method.base = (typeof baseFunction === 'function') ? function base() {
+                                return baseFunction.apply(baseFunction, arguments);
+                            } : function() {
                                 throw Exceptions.NoBaseMethodToCall();
                             };
 
                             return memberFunction.apply($method, arguments);
                         };
-                    })(member, baseMember);
+                    })(member, baseMember, memberName);
                 }
             }
 
             /// [e] If an init method was provided, let's call it with the passed
             ///     parameters. This is how constructor parameters are passed from
             ///     descendant to parent.
-            if (typeof context.$self.init === 'function') {
-                context.$self.init.apply(context, arguments);
+            if (typeof context._instance.init === 'function') {
+                context._instance.init.apply(context, arguments);
             }
 
-            return context.$self;
+            return context._instance;
         };
 
         /// [3] A little bit of magic here. We actually create the base constructor
@@ -319,31 +317,28 @@
                 }
 
                 var proxy = defineClass(ProxyConstructor, constructor);
-                proxy.$type.namespace = namespace || proxy.$type.namespace;
+                proxy.Type.namespace = namespace || proxy.Type.namespace;
 
                 return proxy;
             };
         })();
 
-        ProxyConstructor.Create = function Create() {
-        };
-
         /// [5] Our type information object that stores metadata about the class being
         ///     defined. A lot of these are convenience properties/functions so that
         ///     you don't have to do all kinds of crazy stuff to get to it. It's attached
         ///     to the constructor, NOT the instantiated instance.
-        ProxyConstructor.$type = {
+        ProxyConstructor.Type = {
             base: baseType,
             baseName: baseTypeName,
             constructor: type,
             name: typeName,
-            namespace: baseType.$type ? baseType.$type.namespace : 'System',
+            namespace: baseType.Type ? baseType.Type.namespace : 'System',
 
-            qualifiedName: function qualifiedName() {
+            qualifiedName: function() {
                 return [this.namespace, this.name].join('.');
             },
-            namespaceObject: function namespaceObject() {
-                return NamespaceManager.get(ProxyConstructor.$type.namespace);
+            namespaceObject: function() {
+                return NamespaceManager.get(ProxyConstructor.Type.namespace);
             }
         };
 
@@ -362,15 +357,14 @@
     /// Although we expose the DefineClass method, try to avoid using that and base all your
     /// classes on the BaseObject or EcmaObject class.
     /// </summary>
-    Factory.BaseObject = API.BaseObject = Factory.DefineClass(Object, function BaseObject() {
+    Factory.BaseObject  = API.BaseObject    = Factory.DefineClass(Object, function BaseObject() {
         return {
-            dispose: function dispose() {}
+            init: function() {},
+            dispose: function() {}
         };
     });
 
-    Factory.Observable = API.Observable = API.BaseObject.extend(function Observable(model, name) {
-        this.$init();
-
+    Factory.Observable  = API.Observable    = API.BaseObject.extend(function Observable(model, name) {
         var detectType = function detectType(object) {
             if (object instanceof Array || typeof object === 'array') {
                 return Array;
@@ -389,7 +383,7 @@
             return object.constructor;
         };
 
-        var properties = this.$properties;
+        var properties = this._properties;
 
         (function bind(source, target) {
 
@@ -409,7 +403,7 @@
                 }
             }
 
-        })(model, this.$self);
+        })(model, this._instance);
 
         return {
             dispose: function dispose() {
@@ -424,11 +418,9 @@
         };
     });
 
-    Factory.Timer = API.Timer = API.BaseObject.extend(function Timer() {
-        this.$init();
-
-        var timers = (this.$context.timers = []);
-        var self = this.$self;
+    Factory.Timer       = API.Timer         = API.BaseObject.extend(function Timer() {
+        var timers = (this._context.timers = []);
+        var self = this._instance;
 
         self.Exceptions = {
             CallbackNotFound: function CallbackNotFound() {
@@ -473,10 +465,8 @@
         };
     });
 
-    Factory.DataBinder = API.BaseObject.extend(function DataBinder() {
-        this.$init();
-
-        var models = (this.$context.models = {});
+    Factory.DataBinder  = API.DataBinder    = API.BaseObject.extend(function DataBinder() {
+        var models = (this._context.models = {});
 
         var members = {};
 

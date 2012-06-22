@@ -1,0 +1,94 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title></title>
+    <script type="text/javascript" src="lib/jquery-1.7.2.js"></script>
+    <script type="text/javascript">
+        $(function() {
+
+            var content = {
+                main: {
+                    tag: 'div',
+                    css: 'container',
+                    children: {
+                        header: {
+                            tag: 'div',
+                            css: 'small'
+                        },
+                        body: {
+                            tag: 'div',
+                            css: 'medium'
+                        },
+                        footer: {
+                            tag: 'div',
+                            css: 'large'
+                        }
+                    }
+                }
+            };
+
+            var $body = $(document).find('body');
+
+            var template = '<{tag}></{tag}>';
+
+            (function initializeContents(map, parent) {
+                for (var key in map) {
+                    if (map.hasOwnProperty(key)) {
+                        var properties = map[key];
+                        var html = template.replace(/{tag}/g, properties.tag);
+                        var $html = $(html).addClass(properties.css);
+
+                        parent.append($html);
+
+                        if (properties.children) {
+                            initializeContents(properties.children, $html);
+                        }
+                    }
+                }
+            })(content, $body);
+
+            var events = {
+                'mouseout': function(e) {
+                    $(this).css('border', '');
+                    e.preventDefault();
+                    e.stopPropagation();
+                },
+                'mouseover': function(e) {
+                    $(this).css({
+                        'border': 'solid 1px #c9c9c9',
+                        'margin' : '-3px'
+                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            };
+
+            $(document).on(events, 'div :not(.container)');
+
+        });
+    </script>
+    <style type="text/css">
+        .small {
+            background-color: #1152f5;
+            height: 100px;
+            width: 100px
+        }
+
+        .medium {
+            background-color: #c9c9c9;
+            height: 200px;
+            width: 200px;
+        }
+
+        .large {
+            background-color: #0000ff;
+            height: 300px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+</body>
+</html>

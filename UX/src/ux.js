@@ -6,16 +6,24 @@
         }
     };
 
-    // This is client-side only, so we can safely assume that window will contain our
-    // Factory framework.
     var Factory = api.Factory || (function() { throw Exceptions.RequiresLibrary('Factory'); });
     var that = api.that || (function() { throw Exceptions.RequiresLibrary('That'); });
 
-    var UX = {};
+    var UX = api.UX = {};
+
+    UX.Enums = {
+        Mouse: {
+            Button: {
+                Left: 1,
+                Right: 2,
+                Middle: 3
+            }
+        }
+    };
 
     var Element = UX.Element = Factory.BaseObject.extend(function Element(selector) {
         var instance = this;
-        instance.$init(selector);
+        instance._init(selector);
 
         return {
         };
@@ -23,10 +31,10 @@
 
     var ViewPort = Element.extend(function ViewPort(selector) {
         var instance = this;
-        instance.$init(selector);
+        instance._init(selector);
 
         return {
         };
     });
 
-})(window.API);
+})(API || window.API);

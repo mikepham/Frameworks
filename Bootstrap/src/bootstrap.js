@@ -443,4 +443,10 @@
 
     Bootstrap.ScriptStates = ScriptStates;
 
+    if (typeof this.load !== 'function') {
+        this.load = function(filename) {
+            return Bootstrap.load(filename);
+        };
+    }
+
 })();

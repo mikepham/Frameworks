@@ -535,7 +535,7 @@
         ///     bindingType: Enums.BindingTypes.ByReference
         /// }
         /// </remarks>
-        var properties = this.properties = function properties(source, options) {
+        var properties = this._properties = function properties(source, options) {
             CreateProperties(source, object, options);
             return T;
         };

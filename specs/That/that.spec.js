@@ -151,7 +151,7 @@
                     lastName: 'Pham'
                 };
 
-                that(object).properties(properties);
+                that(object)._properties(properties);
 
                 expect(object.firstName instanceof Function).toBe(true);
                 expect(object.firstName()).toBe(properties.firstName);
@@ -163,7 +163,7 @@
                     lastName: 'Pham'
                 };
 
-                that(object).properties(properties);
+                that(object)._properties(properties);
                 object.firstName('Michael');
 
                 expect(object.firstName()).toBe('Michael');
@@ -178,7 +178,7 @@
                     }
                 };
 
-                that(object).properties(properties, { bindingType: That.Enums.BindingTypes.ByValue });
+                that(object)._properties(properties, { bindingType: That.Enums.BindingTypes.ByValue });
                 object.name.first('Michael');
 
                 expect(object.name === properties.name).toBe(false);
@@ -191,7 +191,7 @@
                     lastName: 'Pham'
                 };
 
-                that(object).properties(properties);
+                that(object)._properties(properties);
                 object.events.firstNameChanged(function() {
                     called = true;
                 });

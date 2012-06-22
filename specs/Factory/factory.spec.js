@@ -12,17 +12,15 @@
 
         it('should be able to define a class', function() {
             var Descendant = Factory.BaseObject.extend(function Descendant() {
-                this.$init();
                 return {};
             });
 
-            expect(Descendant.$type).toBeDefined();
-            expect(Descendant.$type.name).toBe('Descendant');
+            expect(Descendant.Type).toBeDefined();
+            expect(Descendant.Type.name).toBe('Descendant');
         });
 
         it('should be able to instantiate a class', function() {
             var Descendant = Factory.BaseObject.extend(function Descendant() {
-                this.$init();
                 return {};
             });
 
@@ -31,7 +29,6 @@
 
         it('should be identified properly using [instanceof]', function() {
             var Descendant = Factory.BaseObject.extend(function Descendant() {
-                this.$init();
                 return {};
             });
 
@@ -42,7 +39,6 @@
 
         it('should be able to define a function', function() {
             var Descendant = Factory.BaseObject.extend(function Descendant() {
-                this.$init();
                 return {
                     testFunction: function testFunction() {
                         return 'Descendant.testFunction';
@@ -59,9 +55,9 @@
             var calledInit = false;
 
             var Descendant = Factory.BaseObject.extend(function Descendant() {
-                this.$init();
                 return {
-                    init: function init() {
+                    init: function() {
+                        this.base();
                         calledInit = true;
                     }
                 };
@@ -72,71 +68,77 @@
         });
 
         it('should have a protected context to store data', function() {
-            var self = this;
-            self._protectedVariableValue = 'protected';
-
             var Parent = Factory.BaseObject.extend(function Parent() {
                 return {
+                    init: function() {
+                        this.base();
+                        this._context.protectedVariable = 'parent';
+                    }
+                };
+            });
+
+            var Child = Parent.extend(function Child() {
+                return {
+                    init: function() {
+                        this.base();
+                        this._context.protectedVariable = 'child';
+                    }
+                };
+            });
+
+            var GrandChild = Child.extend(function GrandChild() {
+                return {
                     protectedVariableValue: function protectedVariableValue() {
-                        return self._protectedVariableValue;
+                        return 'grand' + this._context.protectedVariable;
                     }
                 }
             });
 
-            var Child = Parent.extend(function Child() {
-                return {};
-            });
-
-            var child = new Child();
-            expect(child._protectedVariableValue).toBeUndefined();
-            expect(child.protectedVariableValue()).toBe('protected');
+            expect(new GrandChild().protectedVariableValue()).toBe('grandchild');
         });
 
         it('should allow separate protected contexts for each descendant', function() {
             var CommonClass = Factory.BaseObject.extend(function CommonClass() {
-                this.$init();
-                var context = this.$context;
+
+                var context = this._context;
+                context._typeName = 'CommonClass';
+
                 return {
-                    init: function init() {
-                        context._type = 'CommonClass';
-                    }
                 };
             });
 
             var First = CommonClass.extend(function First() {
-                this.$init();
-                var context = this.$context;
+
+                var context = this._context;
+                context._typeName = 'First';
+
                 return {
-                    init: function init() {
-                        context._type = 'First';
-                    },
-                    typeName: function typeName() {
-                        return this.$context._type;
+                    typeName: function() {
+                        return context._typeName;
                     }
                 };
             });
 
-            var Second = CommonClass.extend(function Second() {
-                this.$init();
+            var Second = First.extend(function Second() {
+
+                var context = this._context;
+
                 return {
-                    typeName: function typeName() {
-                        return this.$context._type + '.Second';
+                    typeName: function() {
+                        return context._typeName + '.Second';
                     }
                 };
             });
 
             var first = new First(), second = new Second();
-            expect(first._type).toBeUndefined();
-            expect(second._type).toBeUndefined();
             expect(first.typeName()).toBe('First');
-            expect(second.typeName()).toBe('CommonClass.Second');
+            expect(second.typeName()).toBe('First.Second');
         });
 
         it('should be able to define properties with types', function() {
             var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
-                var context = this;
-                context.$properties.define('firstName', String, 'Mike');
-                context.$properties.define('orders', Array, []);
+                this._properties.define('firstName', String, 'Mike');
+                this._properties.define('orders', Array, []);
 
                 return {};
             });
@@ -151,8 +153,7 @@
 
         it('should have null as the default value when no initial value provided', function() {
             var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
-                var context = this;
-                context.$properties.define('firstName', String);
+                this._properties.define('firstName', String);
 
                 return {};
             });
@@ -164,8 +165,7 @@
 
         it('should be able to set property value', function() {
             var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
-                var context = this;
-                context.$properties.define('firstName', String);
+                this._properties.define('firstName', String);
 
                 return {};
             });
@@ -178,8 +178,7 @@
 
         it('should reject values that are not of the defined type', function() {
             var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
-                var context = this;
-                context.$properties.define('firstName', String);
+                this._properties.define('firstName', String);
 
                 return {};
             });
@@ -195,8 +194,7 @@
 
         it('should be able to get notifications about property value changes', function() {
             var PropertyClass = Factory.BaseObject.extend(function PropertyClass() {
-                var context = this;
-                context.$properties.define('firstName', String);
+                this._properties.define('firstName', String);
 
                 return {};
             });
@@ -213,7 +211,7 @@
 
         it('should be able to define events', function() {
             var EventClass = Factory.BaseObject.extend(function EventClass() {
-                this.$events.define('simpleEvent');
+                this._events.define('simpleEvent');
                 return {};
             });
 
@@ -225,7 +223,7 @@
 
         it('should be able to add event handlers and call them', function() {
             var EventClass = Factory.BaseObject.extend(function EventClass() {
-                this.$events.define('simpleEvent');
+                this._events.define('simpleEvent');
                 return {};
             });
 
@@ -242,7 +240,7 @@
 
         it('should be able to add multiple event handlers and call them', function() {
             var EventClass = Factory.BaseObject.extend(function EventClass() {
-                this.$events.define('simpleEvent');
+                this._events.define('simpleEvent');
                 return {};
             });
 
@@ -265,25 +263,23 @@
             var TestingNamespace = 'Testing.Factory';
 
             var DefaultNamespaceClass = Factory.BaseObject.extend(function DefaultNamespaceClass() {
-                this.$init();
                 return {};
             });
 
             var CustomNamespaceClass = DefaultNamespaceClass.extend(function CustomNamespaceClass() {
-                this.$init();
                 return {};
             }, TestingNamespace);
 
             it('should set all undefined namespaces to "System"', function() {
-                expect(DefaultNamespaceClass.$type.qualifiedName()).toBe('System.DefaultNamespaceClass');
+                expect(DefaultNamespaceClass.Type.qualifiedName()).toBe('System.DefaultNamespaceClass');
             });
 
             it('should set the namespace correctly when defined', function() {
-                expect(CustomNamespaceClass.$type.namespace).toBe(TestingNamespace);
+                expect(CustomNamespaceClass.Type.namespace).toBe(TestingNamespace);
             });
 
             it('should get a namespace object', function() {
-                var namespaceObject = CustomNamespaceClass.$type.namespaceObject();
+                var namespaceObject = CustomNamespaceClass.Type.namespaceObject();
                 var TestingNamespaceParts = TestingNamespace.split('.');
                 expect(namespaceObject.isNamespace).toBe(true);
                 expect(namespaceObject.name).toBe(TestingNamespaceParts[1]);
