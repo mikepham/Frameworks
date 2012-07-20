@@ -99,33 +99,26 @@
 
         it('should allow separate protected contexts for each descendant', function() {
             var CommonClass = Factory.BaseObject.extend(function CommonClass() {
-
-                var context = this._context;
-                context._typeName = 'CommonClass';
-
                 return {
+					init: function() {
+						this.base();
+						this._context._typeName = 'CommonClass';
+					}
                 };
             });
 
             var First = CommonClass.extend(function First() {
-
-                var context = this._context;
-                context._typeName = 'First';
-
                 return {
                     typeName: function() {
-                        return context._typeName;
+                        return (this._context._typeName = 'First');
                     }
                 };
             });
 
             var Second = First.extend(function Second() {
-
-                var context = this._context;
-
                 return {
                     typeName: function() {
-                        return context._typeName + '.Second';
+                        return this._context._typeName + '.Second';
                     }
                 };
             });

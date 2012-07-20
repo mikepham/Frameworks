@@ -357,14 +357,14 @@
     /// Although we expose the DefineClass method, try to avoid using that and base all your
     /// classes on the BaseObject or EcmaObject class.
     /// </summary>
-    Factory.BaseObject  = API.BaseObject    = Factory.DefineClass(Object, function BaseObject() {
+    Factory.BaseObject = API.BaseObject = Factory.DefineClass(Object, function BaseObject() {
         return {
             init: function() {},
             dispose: function() {}
         };
     });
 
-    Factory.Observable  = API.Observable    = API.BaseObject.extend(function Observable(model, name) {
+    Factory.Observable = API.Observable = API.BaseObject.extend(function Observable(model, name) {
         var detectType = function detectType(object) {
             if (object instanceof Array || typeof object === 'array') {
                 return Array;
@@ -418,7 +418,7 @@
         };
     });
 
-    Factory.Timer       = API.Timer         = API.BaseObject.extend(function Timer() {
+    Factory.Timer = API.Timer = API.BaseObject.extend(function Timer() {
         var timers = (this._context.timers = []);
         var self = this._instance;
 
@@ -465,7 +465,7 @@
         };
     });
 
-    Factory.DataBinder  = API.DataBinder    = API.BaseObject.extend(function DataBinder() {
+    Factory.DataBinder = API.DataBinder = API.BaseObject.extend(function DataBinder() {
         var models = (this._context.models = {});
 
         var members = {};
@@ -489,7 +489,6 @@
                 return this;
             }
         };
-
 
         return members;
     });

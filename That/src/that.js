@@ -9,25 +9,25 @@
     /* Exceptions */
 
     var Exceptions = {
-        IndexOutOfBounds: function IndexOutOfBounds(index) {
+        IndexOutOfBounds: function(index) {
             return new Error('Index was out of bounds: ' + index);
         },
-        InvalidOperation: function InvalidOperation(message) {
+        InvalidOperation: function(message) {
             return new Error('An invalid operation was performed. ' + message);
         }
     };
 
     /* Helper functions */
 
-    var ArgumentsToArray = function ArgumentsToArray(array) {
+    var ArgumentsToArray = function(array) {
         return Array.prototype.slice.call(array);
     };
 
-    var At = function At(array, index) {
+    var At = function(array, index) {
         return array.charAt ? array.charAt(index) : array[index];
     };
 
-    var Copy = function Copy(source, deepCopy) {
+    var Copy = function(source, deepCopy) {
         var self = this;
 
         if (deepCopy) {
@@ -53,7 +53,7 @@
         return source;
     };
 
-    var CreateEvents = function CreateEvents(target, eventList) {
+    var CreateEvents = function(target, eventList) {
         var eventNames = IsMatchingType(eventList, Array) ? eventList : ArgumentsToArray(arguments);
 
         if (!target.events) {
@@ -89,7 +89,7 @@
         });
     };
 
-    var CreateProperties = function CreateProperties(source, target, options) {
+    var CreateProperties = function(source, target, options) {
         var settings = Merge(options || {}, {
             bindingType: Enums.BindingTypes.ByReference
         });
@@ -122,7 +122,7 @@
         });
     };
 
-    var FormatString = function FormatString(formattedString, parameters) {
+    var FormatString = function(formattedString, parameters) {
         var result = formattedString;
         var args = ArgumentsToArray(arguments);
 
@@ -143,11 +143,11 @@
         return result;
     };
 
-    var IsJavaScriptType = function IsJavaScriptType(source, type) {
+    var IsJavaScriptType = function(source, type) {
         return (type === Object.prototype.toString.call(source).slice(8, -1).toLowerCase());
     };
 
-    var IsMatchingType = function IsMatchingType(source, type) {
+    var IsMatchingType = function(source, type) {
         // If either of them is null, we just do a straight comparison.
         if (source === null || type === null) {
             return (source === type);
@@ -183,7 +183,7 @@
         return (source instanceof type);
     };
 
-    var IsOnlyMatchingType = function IsOnlyMatchingType(source, type) {
+    var IsOnlyMatchingType = function(source, type) {
         var wantsArray = (type === 'array' || type === Array);
         var wantsDate = (type === Date);
         var wantsFunction = (type === 'function' || type === Function);
@@ -226,7 +226,7 @@
         return true;
     };
 
-    var IterateArray = function IterateArray(array, callback) {
+    var IterateArray = function(array, callback) {
         var length = array.length;
 
         for (var i=0; i < length; i++) {
@@ -240,7 +240,7 @@
         }
     };
 
-    var IterateCount = function IterateCount(count, callback) {
+    var IterateCount = function(count, callback) {
         for (var i=0; i < count; i++) {
             var result = callback.apply(count, [i, count]);
 
@@ -252,7 +252,7 @@
         return 0;
     };
 
-    var IterateObject = function IterateObject(object, callback) {
+    var IterateObject = function(object, callback) {
         for (var propertyName in object) {
             if (object.hasOwnProperty(propertyName)) {
                 var propertyValue = object[propertyName];
@@ -266,7 +266,7 @@
         }
     };
 
-    var Iterate = function Iterate(object, callback) {
+    var Iterate = function(object, callback) {
         if (IsMatchingType(callback, Function)) {
             if (IsMatchingType(object, Array) || IsMatchingType(object, String)) {
                 return IterateArray.apply(this, [object, callback]);
@@ -280,7 +280,7 @@
         throw Exceptions.InvalidOperation('Could not iterate the object you provided.');
     };
 
-    var Merge = function Merge(source, target) {
+    var Merge = function(source, target) {
         if (!IsMatchingType(source, Object)) {
             throw Exceptions.InvalidArgumentType(Object, source);
         } else if (!IsMatchingType(target, Object)) {
@@ -296,7 +296,7 @@
         return target;
     };
 
-    var RemoveFromArray = function RemoveFromArray(array, startIndex, count) {
+    var RemoveFromArray = function(array, startIndex, count) {
         // http://ejohn.org/blog/javascript-array-remove/
         var rest = array.slice((count || startIndex) + 1 || array.length);
         array.length = startIndex < 0 ? array.length + startIndex : startIndex;
@@ -322,20 +322,20 @@
     /// not the helpers so as the helpers can do whatever it needs to without changing
     /// the contract.
     /// </summary>
-    var That = API.That = function That(object) {
+    var That = API.That = function(object) {
         var T = this;
 
         /// <summary>
         /// Returns an arguments object into an array.
         /// </summary>
-        var args = this.args = function args() {
+        var args = this.args = function() {
             return ArgumentsToArray(object);
         };
 
         /// <summary>
         /// Safely gets the value at the specified index for an array or string.
         /// </summary>
-        var at = this.at = function at(index) {
+        var at = this.at = function(index) {
             if (not.bounded(index)) {
                 throw Exceptions.IndexOutOfBounds(index);
             }
@@ -346,7 +346,7 @@
         /// <summary>
         /// Determines if the index is within the bounds of the object.
         /// </summary>
-        var bounded = this.bounded = function bounded(index) {
+        var bounded = this.bounded = function(index) {
             if (!object.length) {
                 throw Exceptions.InvalidOperation('No length property exists.');
             }
@@ -358,7 +358,7 @@
         /// Clones the provided value. If the value is an object or array with objects,
         /// the cloning will create new instances.
         /// </summary>
-        var clone = this.clone = function clone() {
+        var clone = this.clone = function() {
             return Copy.apply(this, [object, true]);
         };
 
@@ -367,7 +367,7 @@
         /// simply returned to maintain the reference. If you wish to deep copy the object,
         /// use the clone method.
         /// </summary>
-        var copy = this.copy = function copy() {
+        var copy = this.copy = function() {
             return Copy.apply(this, [object, false]);
         };
 
@@ -375,7 +375,7 @@
         /// Deletes the specified index in the array or string or removes
         /// the property from an object.
         /// </summary>
-        var del = this.del = function del(value) {
+        var del = this.del = function(value) {
             if (IsMatchingType(value, String)) {
                 if (IsMatchingType(object, Object)) {
                     try {
@@ -401,7 +401,7 @@
         /// you return from the callback, if it can be evaluated to true,
         /// iteration will stop.
         /// </summary>
-        var each = this.each = function each(callback) {
+        var each = this.each = function(callback) {
             return Iterate(object, callback);
         };
 
@@ -410,7 +410,7 @@
         /// in most cases, so don't use unless you have to, i.e. iterating over
         /// object keys in reverse.
         /// </summary>
-        each.reverse = function reverse(callback) {
+        each.reverse = function(callback) {
             var items = [];
 
             Iterate(object, function(value, key) {
@@ -425,19 +425,19 @@
         /// Checks if the object is empty or not. Does not check if objects
         /// have no properties.
         /// </summary>
-        var empty = this.empty = function empty() {
+        var empty = this.empty = function() {
             return (typeof object === 'undefined' || object === null || object === '');
         };
 
         /// <summary>
         /// Creates the requested event listeners on the object.
         /// </summary>
-        var events = this.events = function events(eventList) {
+        var events = this.events = function(eventList) {
             CreateEvents(object, eventList);
             return T;
         };
 
-        var format = this.format = function format() {
+        var format = this.format = function() {
             var args = [object].concat(ArgumentsToArray(arguments));
             return FormatString.apply(this, args);
         };
@@ -446,7 +446,7 @@
         /// Determines if the array, string, or object contains the provided
         /// value.
         /// </summary>
-        var has = this.has = function has(value) {
+        var has = this.has = function(value) {
             // This is far faster when available...
             if (IsOnlyMatchingType(value, Array) && value.indexOf) {
                 return value.indexOf(value);
@@ -462,21 +462,21 @@
         /// <summary>
         /// Returns the instance that we're wrapping.
         /// </summary>
-        var instance = this.instance = function instance() {
+        var instance = this.instance = function() {
             return object;
         };
 
         /// <summary>
         /// Checks if the object's type matches the requested type.
         /// </summary>
-        var is = this.is = function is(type) {
+        var is = this.is = function(type) {
             return IsMatchingType(object, type);
         };
 
         /// <summary>
         /// Checks if the object's type matches any of the requested types.
         /// </summary>
-        is.any = function any(typeList) {
+        is.any = function(typeList) {
             var types = (typeof typeList === 'array') ? typeList : ArgumentsToArray(arguments);
 
             var length = types.length;
@@ -494,14 +494,14 @@
         /// <summary>
         /// Checks if the object's type does not match.
         /// </summary>
-        is.not = function not(type) {
+        is.not = function(type) {
             return !is(type);
         };
 
         /// <summary>
         /// Checks if the object's type does not match any of the requested types.
         /// </summary>
-        is.only = function only(type) {
+        is.only = function(type) {
             return IsOnlyMatchingType(object, type);
         };
 
@@ -509,7 +509,7 @@
         /// Merges the properties from the source to the target when the property
         /// does not already exist.
         /// </summary>
-        var merge = function merge(source) {
+        var merge = function(source) {
             return Merge(source, object);
         };
 
@@ -519,9 +519,9 @@
         /// that.not.is();
         /// </summary>
         var not = this.not = {
-            bounded: function bounded(index) { return !bounded(index); },
-            empty: function empty() { return !empty(); },
-            has: function has(value) { return !has(value); }
+            bounded: function(index) { return !bounded(index); },
+            empty: function() { return !empty(); },
+            has: function(value) { return !has(value); }
         };
 
         /// <summary>
@@ -535,7 +535,7 @@
         ///     bindingType: Enums.BindingTypes.ByReference
         /// }
         /// </remarks>
-        var properties = this._properties = function properties(source, options) {
+        var properties = this._properties = function(source, options) {
             CreateProperties(source, object, options);
             return T;
         };
@@ -556,16 +556,16 @@
 
     var installation = {};
 
-    That.install = function install() {
-        function Warning(message) {
+    That.install = function() {
+        var Warning = function(message) {
             return '[WARNING] Did not install + ' + message + ' because it was already there.'
                 + ' The current implementation may not be compatible.';
-        }
+        };
 
         if (!String.prototype.format) {
             installation['format'] = { $prototype: String.prototype, original: String.prototype.format };
 
-            String.prototype.format = function format() {
+            String.prototype.format = function() {
                 var args = [this].concat(ArgumentsToArray(arguments));
 
                 return FormatString.apply(this, args);
@@ -575,7 +575,7 @@
         }
 
         if (!Array.prototype.indexOf) {
-            Array.prototype.indexOf = function indexOf(value) {
+            Array.prototype.indexOf = function(value) {
                 installation['indexOf'] = { $prototype: Array.prototype, original: Array.prototype.indexOf };
 
                 return IterateArray(this, function(element) {
@@ -587,13 +587,13 @@
         }
     };
 
-    That.uninstall = function uninstall() {
+    That.uninstall = function() {
         IterateObject(installation, function(value, key) {
             value.$prototype[key] = value.original;
         });
     };
 
-    API.that = function that(object) {
+    API.that = function(object) {
         return new That(object);
     };
 
